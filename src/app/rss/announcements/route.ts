@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const { prisma } = await import('@/lib/prisma');
+
     // Fetch latest 25 published announcements
     const announcements = await prisma.announcement.findMany({
       where: {
