@@ -49,6 +49,7 @@
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "critters": "^0.0.25",
+    "canvg": "^3.0.11",
     "crypto-js": "^4.2.0",
     "date-fns": "^3.6.0",
     "dotenv": "^17.2.2",
@@ -98,5 +99,6 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.4.0",
     "typescript-eslint": "^7.18.0"
-  }
+  },
+  "packageManager": "yarn@1.22.19+sha512.ff4579ab459bb25aa7c0ff75b62acebe576f6084b36aa842971cf250a5d8c6cd3bc9420b22ce63c7f93a0857bc6ef29291db39c3e7a23aab5adfd5a4dd6c5d71"
 }
