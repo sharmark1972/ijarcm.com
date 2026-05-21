@@ -1,8 +1,6 @@
 {
-  "buildCommand": "npm run build",
-  "env": {
-    "npm_config_build_from_source": "true"
-  },
+  "installCommand": "yarn install --ignore-optional",
+  "buildCommand": "yarn build",
   "rewrites": [
     {
       "source": "/api/(.*)",
