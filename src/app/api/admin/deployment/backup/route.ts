@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { Client } from 'basic-ftp';
@@ -9,6 +9,8 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 import { decrypt } from '@/lib/encryption';
+
+export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
 

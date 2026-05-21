@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
+
+export const dynamic = 'force-dynamic';
 
 // Schema for API key generation
 const createApiKeySchema = z.object({

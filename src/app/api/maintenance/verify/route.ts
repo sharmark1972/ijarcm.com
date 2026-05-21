@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { rateLimit } from '@/lib/rate-limit';
+
+export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
 

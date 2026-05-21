@@ -1,5 +1,7 @@
-import { NextResponse, NextRequest } from 'next/server';
+﻿import { NextResponse, NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
+
+export const dynamic = 'force-dynamic';
 
 // This will store fees configuration in memory
 // In production, you should use a database

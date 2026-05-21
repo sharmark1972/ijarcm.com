@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { generateIssueCover } from '@/lib/issueCoverGenerator';
+
+export const dynamic = 'force-dynamic';
 
 const issueSchema = z.object({
   title: z.string().min(1, 'Title is required'),

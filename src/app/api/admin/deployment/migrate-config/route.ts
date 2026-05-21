@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { PrismaClient } from '@prisma/client'
+
+export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient()
 
@@ -50,7 +52,7 @@ export async function POST(request: NextRequest) {
       message: 'Configuration migrated successfully',
       changes: {
         passwordReEncrypted: true,
-        portUpdated: config.port !== newPort ? `${config.port} → ${newPort}` : false
+        portUpdated: config.port !== newPort ? `${config.port} â†’ ${newPort}` : false
       }
     })
   } catch (error) {

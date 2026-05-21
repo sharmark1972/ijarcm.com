@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
+
+export const dynamic = 'force-dynamic';
 
 const createArchiveSchema = z.object({
   title: z.string().min(1, 'Title is required'),

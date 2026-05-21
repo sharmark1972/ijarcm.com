@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { generateCitation, CitationStyle, CitationData } from '@/lib/citations';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 const createCitationSchema = z.object({
   paperId: z.string().uuid(),

@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { encrypt, decrypt } from '@/lib/encryption'
 import { PrismaClient } from '@prisma/client'
+
+export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient()
 

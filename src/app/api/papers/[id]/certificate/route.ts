@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import QRCode from 'qrcode';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
@@ -798,15 +800,15 @@ function generateCertificateHTML({
         <!-- Header Section -->
         <div class="header">
           <div class="seal">
-            <span class="seal-icon">🏆</span>
+            <span class="seal-icon">ðŸ†</span>
           </div>
           <h1 class="certificate-title">${getCertificateTypeText(type)}</h1>
           <div class="divider">
             <div class="divider-line"></div>
             <div class="divider-stars">
-              <span>★</span>
-              <span>★</span>
-              <span>★</span>
+              <span>â˜…</span>
+              <span>â˜…</span>
+              <span>â˜…</span>
             </div>
             <div class="divider-line right"></div>
           </div>
@@ -814,7 +816,7 @@ function generateCertificateHTML({
           <h3 class="institution-subtitle">in Commerce &amp; Management (IJARCM)</h3>
           <div class="issn-container">
             <span>ISSN (Print): 2455-0116</span>
-            <span class="issn-separator">•</span>
+            <span class="issn-separator">â€¢</span>
             <span>ISSN (Online): 2395-6410</span>
           </div>
         </div>
@@ -841,7 +843,7 @@ function generateCertificateHTML({
         <div class="footer">
           <div class="date-section">
             <div class="section-label">
-              <span>📅</span>
+              <span>ðŸ“…</span>
               <span>Date of Issuance</span>
             </div>
             <p class="date-value">${formatDate(issuedAt)}</p>
@@ -849,7 +851,7 @@ function generateCertificateHTML({
           
           <div class="cert-number-section">
             <div class="section-label center">
-              <span>🛡️</span>
+              <span>ðŸ›¡ï¸</span>
               <span>Certificate Reference</span>
             </div>
             <p class="cert-value">${certificateNumber}</p>
@@ -867,7 +869,7 @@ function generateCertificateHTML({
         <!-- Legal Notice -->
         <div class="legal-notice">
           <div class="notice-box">
-            <span class="notice-icon">⚖️</span>
+            <span class="notice-icon">âš–ï¸</span>
             <div class="notice-content">
               <p class="notice-title">Legal Notice</p>
               <p>This certificate serves as official documentation of academic achievement and is issued solely for personal and professional portfolio purposes. The International Journal of Academic Research in Commerce &amp; Management (IJARCM) maintains exclusive authority over certificate verification and authenticity validation.</p>

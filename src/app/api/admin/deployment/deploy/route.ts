@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { Client } from 'basic-ftp';
@@ -7,6 +7,8 @@ import fs from 'fs';
 import path from 'path';
 import { glob } from 'glob';
 import CryptoJS from 'crypto-js';
+
+export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient();
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-key-change-in-production';

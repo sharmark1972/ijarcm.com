@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ANIMATION_TYPES, type AnimationType, type AnimationSetting } from '@/lib/animation-types';
+
+export const dynamic = 'force-dynamic';
 
 // GET - Fetch all animation settings
 export async function GET() {

@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { UserRole } from '@prisma/client';
 import { z } from 'zod';
+
+export const dynamic = 'force-dynamic';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),

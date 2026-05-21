@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 // Free IP geolocation service with timeout and improved error handling
 async function getLocationFromIP(ip: string): Promise<{

@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { rateLimit } from '@/lib/rate-limit';
+
+export const dynamic = 'force-dynamic';
 
 // Apply rate limiting: 100 requests per minute per IP
 const rateLimiter = rateLimit({

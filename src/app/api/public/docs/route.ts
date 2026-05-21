@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -298,6 +298,8 @@ fetch('${baseUrl}/api/public/papers?apiKey=your-api-key-here')
       `,
       python: `
 import requests
+
+export const dynamic = 'force-dynamic';
 
 # Fetch all papers
 response = requests.get('${baseUrl}/api/public/papers')

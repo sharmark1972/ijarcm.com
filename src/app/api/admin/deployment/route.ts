@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { PrismaClient } from '@prisma/client'
@@ -10,6 +10,8 @@ import { promisify } from 'util'
 import fs from 'fs'
 import path from 'path'
 import { decrypt } from '@/lib/encryption'
+
+export const dynamic = 'force-dynamic';
 
 const prisma = new PrismaClient()
 const execAsync = promisify(exec)

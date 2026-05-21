@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+
+export const dynamic = 'force-dynamic';
 
 // Z.AI API Configuration
 const ZAI_API_KEY = '48d0f19809a7421e9ab32c116b499f0a.L1qF6IHyGGs61iDj';
