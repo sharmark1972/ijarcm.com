@@ -1,4 +1,8 @@
 {
+  "buildCommand": "npm run build",
+  "env": {
+    "npm_config_build_from_source": "true"
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
