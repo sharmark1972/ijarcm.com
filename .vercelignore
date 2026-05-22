@@ -3,6 +3,7 @@ build
 dist
 .git
 legacy-api
+src/app/api/admin/deployment
 .trae
 .log
 .figma
