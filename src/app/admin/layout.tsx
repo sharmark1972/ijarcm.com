@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { redirect } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
@@ -32,8 +32,16 @@ export default function AdminLayout({
 }) {
   const { data: session, status } = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  // Redirect if not authenticated or not an admin
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      router.replace('/');
+    }
+  }, [router, session, status]);
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -42,8 +50,8 @@ export default function AdminLayout({
     );
   }
 
-  if (!session || session.user.role !== 'ADMIN') {
-    redirect('/');
+  if (!session?.user || session.user.role !== 'ADMIN') {
+    return null;
   }
 
   const navigation = [
@@ -161,7 +169,7 @@ export default function AdminLayout({
           <nav className="mt-6 px-3">
             <div className="space-y-1">
               {navigation.map((item) => {
-                const isActive = window.location.pathname === item.href;
+                const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.name}
