@@ -236,7 +236,7 @@ function MemberForm({
                   className="object-cover"
                   sizes="64px"
                   onError={() => setImageError(true)}
-                  unoptimized={formData.imageUrl.startsWith('/uploads/')}
+                  unoptimized={formData.imageUrl.startsWith('http') || formData.imageUrl.startsWith('/uploads/')}
                 />
               </div>
               <div className="text-sm text-blue-600">
