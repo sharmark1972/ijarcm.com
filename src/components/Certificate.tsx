@@ -5,10 +5,8 @@ import { Award, Calendar, Shield, Star, BookOpen, GraduationCap } from 'lucide-r
 import Image from 'next/image';
 import { ISSN_PRINT, ISSN_ONLINE, type CertificateProps } from '@/types/certificate';
 
-// Managing Director Signature - R.K. Shesma
-// Primary: SVG signature, Fallback: PNG file
-const MANAGING_DIRECTOR_SIGNATURE = '/uploads/signatures/managing-director-signature.svg';
-const MANAGING_DIRECTOR_SIGNATURE_FALLBACK = '/uploads/signatures/managing-director-signature.png';
+// Managing Director Signature - use the PNG asset that exists in public/uploads/signatures
+const MANAGING_DIRECTOR_SIGNATURE = '/uploads/signatures/managing-director-signature.png';
 
 export default function Certificate({
   certificateNumber,
@@ -604,9 +602,6 @@ export default function Certificate({
                   height={50}
                   className="max-h-14 max-w-full object-contain mb-1"
                   style={{ filter: 'contrast(1.1)' }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = MANAGING_DIRECTOR_SIGNATURE_FALLBACK;
-                  }}
                 />
                 <div 
                   className="w-full pt-2"
