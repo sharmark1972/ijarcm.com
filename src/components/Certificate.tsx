@@ -4,8 +4,8 @@ import { useState, useRef } from 'react';
 import { Award, Calendar, Shield, Star, BookOpen, GraduationCap } from 'lucide-react';
 import { ISSN_PRINT, ISSN_ONLINE, type CertificateProps } from '@/types/certificate';
 
-// Managing Director Signature - use the PNG asset that exists in public/uploads/signatures
-const MANAGING_DIRECTOR_SIGNATURE = '/uploads/signatures/managing-director-signature.png';
+// Managing Director Signature - use the PNG asset that exists in public/
+const MANAGING_DIRECTOR_SIGNATURE = '/managing-director-signature.png';
 
 export default function Certificate({
   certificateNumber,

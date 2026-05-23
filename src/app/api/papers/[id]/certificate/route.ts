@@ -858,7 +858,7 @@ function generateCertificateHTML({
           </div>
           
           <div class="signature-section">
-            <img src="/uploads/signatures/managing-director-signature.png" alt="Authorized Signature" class="signature-image" />
+            <img src="/managing-director-signature.png" alt="Authorized Signature" class="signature-image" />
             <div class="signature-line">
               <p class="signature-title">Managing Director</p>
               <p class="signature-org">IJARCM</p>
