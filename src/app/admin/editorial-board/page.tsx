@@ -381,7 +381,7 @@ function MemberCard({ member, onEdit, onDelete }: {
                   className="object-cover"
                   sizes="64px"
                   onError={() => setImageError(true)}
-                  unoptimized={member.imageUrl.startsWith('/uploads/')}
+                  unoptimized={member.imageUrl.startsWith('http') || member.imageUrl.startsWith('/uploads/')}
                 />
               </div>
             ) : (

@@ -369,6 +369,7 @@ function MemberCard({ member, onEdit, onDelete }: {
                   fill
                   className="object-cover"
                   sizes="64px"
+                  unoptimized={member.imageUrl.startsWith('http') || member.imageUrl.startsWith('/uploads/')}
                 />
               </div>
             ) : (
