@@ -15,24 +15,49 @@ const s3Client = new AWS.S3({
 const uploadsDir = path.join(__dirname, '../uploads');
 const publicUploadsDir = path.join(__dirname, '../public/uploads');
 
-async function uploadFilesFromDirectory(dir, folderPrefix) {
+function collectFilesRecursively(dir) {
+  const results = [];
+
+  if (!fs.existsSync(dir)) {
+    return results;
+  }
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      results.push(...collectFilesRecursively(fullPath));
+      continue;
+    }
+
+    if (entry.isFile()) {
+      results.push(fullPath);
+    }
+  }
+
+  return results;
+}
+
+async function uploadFilesFromDirectory(dir, keyPrefix = '') {
   if (!fs.existsSync(dir)) {
     console.log(`📁 Directory not found: ${dir}`);
     return [];
   }
 
   const uploadedFiles = [];
-  const files = fs.readdirSync(dir, { recursive: true });
+  const files = collectFilesRecursively(dir);
 
-  for (const file of files) {
-    const filePath = path.join(dir, file);
+  for (const filePath of files) {
     const stat = fs.statSync(filePath);
 
     if (!stat.isFile()) continue;
 
     try {
       const fileContent = fs.readFileSync(filePath);
-      const key = `${folderPrefix}/${file}`;
+      const relativePath = path.relative(dir, filePath).split(path.sep).join('/');
+      const key = keyPrefix ? `${keyPrefix}/${relativePath}` : relativePath;
 
       await s3Client.putObject({
         Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME,
@@ -43,13 +68,14 @@ async function uploadFilesFromDirectory(dir, folderPrefix) {
 
       const publicUrl = `${process.env.CLOUDFLARE_R2_PUBLIC_URL}/${key}`;
       uploadedFiles.push({
-        localPath: file,
+        localPath: relativePath,
         r2Url: publicUrl,
       });
 
-      console.log(`✅ Uploaded: ${file}`);
+      console.log(`✅ Uploaded: ${relativePath}`);
     } catch (error) {
-      console.error(`❌ Error uploading ${file}:`, error.message);
+      const relativePath = path.relative(dir, filePath).split(path.sep).join('/');
+      console.error(`❌ Error uploading ${relativePath}:`, error.message);
     }
   }
 
@@ -60,15 +86,14 @@ async function migrateAllFiles() {
   console.log('🚀 Starting migration to Cloudflare R2...\n');
 
   try {
-    const uploadedFromRoot = await uploadFilesFromDirectory(uploadsDir, 'legacy-uploads');
-    const uploadedFromPublic = await uploadFilesFromDirectory(publicUploadsDir, 'legacy-public');
+    const uploadedFromRoot = await uploadFilesFromDirectory(uploadsDir);
+    const uploadedFromPublic = await uploadFilesFromDirectory(publicUploadsDir);
 
     const allFiles = [...uploadedFromRoot, ...uploadedFromPublic];
 
     console.log('\n✅ Migration Complete!');
     console.log(`📊 Total files uploaded: ${allFiles.length}`);
 
-    // Save mapping for reference
     if (allFiles.length > 0) {
       fs.writeFileSync(
         path.join(__dirname, '../migration-log.json'),
