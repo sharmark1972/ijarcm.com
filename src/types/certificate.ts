@@ -28,4 +28,5 @@ export interface CertificateProps {
   prize?: string;
   customDate?: string;
   template?: CertificateTemplate;
+  conferenceParticipationType?: 'participation' | 'presentation' | 'both';
 }

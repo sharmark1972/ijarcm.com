@@ -23,6 +23,7 @@ export default function Certificate({
   prize,
   customDate,
   template = 'classic',
+  conferenceParticipationType = 'both',
 }: CertificateProps) {
   const certificateRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
@@ -60,7 +61,7 @@ export default function Certificate({
 
   const displayDate = customDate || issuedAt;
 
-  const getCertificateTypeText = (type: string) => {
+  const getCertificateTypeText = (type: string, participationType?: 'participation' | 'presentation' | 'both') => {
     switch (type) {
       case 'PUBLICATION':
         return 'CERTIFICATE OF PUBLICATION';
@@ -71,7 +72,15 @@ export default function Certificate({
       case 'AWARD':
         return 'CERTIFICATE OF EXCELLENCE';
       case 'CONFERENCE':
-        return 'CERTIFICATE OF CONFERENCE PARTICIPATION AND PRESENTATION';
+        switch (participationType) {
+          case 'participation':
+            return 'CERTIFICATE OF CONFERENCE PARTICIPATION';
+          case 'presentation':
+            return 'CERTIFICATE OF CONFERENCE PRESENTATION';
+          case 'both':
+          default:
+            return 'CERTIFICATE OF CONFERENCE PARTICIPATION AND PRESENTATION';
+        }
       default:
         return 'CERTIFICATE OF ACHIEVEMENT';
     }
@@ -304,7 +313,7 @@ export default function Certificate({
         </div>
 
         {/* Main Content Wrapper */}
-        <div className="flex-1 flex flex-col px-16 relative z-10" style={{ paddingTop: '96px', paddingBottom: '225px' }}>
+        <div className="flex-1 flex flex-col px-16 relative" style={{ paddingTop: '86px', paddingBottom: '150px', zIndex: 50 }}>
           {/* Header Section */}
           <div className="text-center" style={{ marginBottom: '6px' }}>
             <h1
@@ -318,7 +327,7 @@ export default function Certificate({
                 lineHeight: 1.25,
               }}
             >
-              {getCertificateTypeText(type)}
+              {getCertificateTypeText(type, conferenceParticipationType)}
             </h1>
 
             {/* Divider */}
@@ -457,14 +466,10 @@ export default function Certificate({
             )}
           </div>
 
-        </div>
-
-        {/* Fixed bottom block - absolutely positioned, always above borders */}
-        <div style={{ position: 'absolute', bottom: '90px', left: '96px', right: '96px', zIndex: 10 }}>
-          {/* Footer row */}
+          {/* Footer row - normal flow, always after flex-1 body */}
           <div
             className="flex justify-between items-end"
-            style={{ borderTop: `2px solid ${templateStyles.goldAccent}30`, paddingTop: '12px', paddingLeft: '32px', paddingRight: '32px', paddingBottom: '8px' }}
+            style={{ borderTop: `2px solid ${templateStyles.goldAccent}30`, paddingTop: '12px', paddingLeft: '32px', paddingRight: '32px', paddingBottom: '8px', marginTop: 'auto' }}
           >
             {/* Date Section */}
             <div className="text-left">
@@ -519,6 +524,7 @@ export default function Certificate({
               ijarcm.com/verify/{certificateNumber}
             </p>
           </div>
+
         </div>
       </div>
 
