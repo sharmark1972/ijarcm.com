@@ -17,8 +17,7 @@ import {
   Book,
   DollarSign,
   Award,
-  Eye,
-  Globe
+  Eye
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -126,12 +125,6 @@ export default function AdminLayout({
       name: 'Certificates',
       href: '/admin/certificates',
       icon: Award,
-      current: false,
-    },
-    {
-      name: 'Sites / Journals',
-      href: '/admin/journals',
-      icon: Globe,
       current: false,
     },
     {

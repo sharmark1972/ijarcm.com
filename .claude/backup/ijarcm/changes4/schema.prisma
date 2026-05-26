@@ -289,27 +289,6 @@ model Conference {
   @@map("conferences")
 }
 
-model Journal {
-  id           String        @id @default(uuid())
-  name         String        @db.VarChar(500)
-  abbreviation String        @db.VarChar(50)
-  website      String?       @db.VarChar(500)
-  issnPrint    String?       @map("issn_print") @db.VarChar(50)
-  issnOnline   String?       @map("issn_online") @db.VarChar(50)
-  origin       String?       @db.VarChar(100)
-  doiAllotted  Boolean       @default(false) @map("doi_allotted")
-  isDefault    Boolean       @default(false) @map("is_default")
-  isActive     Boolean       @default(true) @map("is_active")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  certificates Certificate[]
-
-  @@unique([abbreviation])
-  @@index([isActive])
-  @@index([isDefault])
-  @@map("journals")
-}
-
 model PlagiarismCheck {
   id          String           @id @default(uuid())
   paperId     String           @map("paper_id")
@@ -417,11 +396,9 @@ model Certificate {
   isValid           Boolean         @default(true) @map("is_valid")
   revokedAt         DateTime?       @map("revoked_at")
   revokedBy         String?         @map("revoked_by")
-  journalId         String?         @map("journal_id")
   paper             Paper?          @relation(fields: [paperId], references: [id])
   revoker           User?           @relation("CertificateRevoker", fields: [revokedBy], references: [id])
   user              User?           @relation("UserCertificates", fields: [userId], references: [id])
-  journal           Journal?        @relation(fields: [journalId], references: [id])
 
   @@index([paperId])
   @@index([userId])
@@ -430,7 +407,6 @@ model Certificate {
   @@index([issuedAt])
   @@index([isValid])
   @@index([revokedBy], map: "certificates_revoked_by_fkey")
-  @@index([journalId])
   @@map("certificates")
 }
 

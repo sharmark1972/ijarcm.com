@@ -5,15 +5,6 @@ import html2canvas from 'html2canvas';
 import { Award, Calendar, Shield, Star, BookOpen, GraduationCap } from 'lucide-react';
 import { ISSN_PRINT, ISSN_ONLINE, type CertificateProps } from '@/types/certificate';
 
-// Default IJARCM journal details used when no journal prop is passed
-const DEFAULT_JOURNAL = {
-  name: 'International Journal of Academic Research in Commerce & Management (IJARCM)',
-  abbreviation: 'IJARCM',
-  issnPrint: ISSN_PRINT,
-  issnOnline: ISSN_ONLINE,
-  website: 'ijarcm.com',
-};
-
 // Managing Director Signature - use the PNG asset that exists in public/
 const MANAGING_DIRECTOR_SIGNATURE = '/managing-director-signature.png';
 
@@ -29,19 +20,11 @@ export default function Certificate({
   conferenceName,
   conferenceDates,
   topic,
-  venue,
   prize,
   customDate,
   template = 'classic',
   conferenceParticipationType = 'both',
-  journal,
 }: CertificateProps) {
-  const journalData = journal ?? DEFAULT_JOURNAL;
-  const journalDisplayName = journalData.name;
-  const journalAbbr = journalData.abbreviation;
-  const journalIssnPrint = journalData.issnPrint;
-  const journalIssnOnline = journalData.issnOnline;
-  const journalWebsite = ('website' in journalData ? journalData.website : null) ?? `${journalAbbr.toLowerCase()}.com`;
   const certificateRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -128,20 +111,19 @@ export default function Certificate({
   };
 
   const getCertificateDescription = (type: string) => {
-    const abbr = journalAbbr;
     switch (type) {
       case 'PUBLICATION':
-        return `${abbr} hereby certifies that the distinguished scholar named herein has successfully published an original research contribution, which has undergone rigorous double-blind peer review, demonstrating adherence to the highest standards of academic excellence and research integrity.`;
+        return 'IJARCM hereby certifies that the distinguished scholar named herein has successfully published an original research contribution, which has undergone rigorous double-blind peer review, demonstrating adherence to the highest standards of academic excellence and research integrity.';
       case 'PARTICIPATION':
-        return `${abbr} takes pride in recognizing the valuable participation and scholarly engagement of the individual named herein. Their dedication to advancing academic discourse and contributing to the research community is hereby acknowledged with appreciation.`;
+        return 'IJARCM takes pride in recognizing the valuable participation and scholarly engagement of the individual named herein. Their dedication to advancing academic discourse and contributing to the research community is hereby acknowledged with appreciation.';
       case 'REVIEW':
-        return `${abbr} formally recognizes the esteemed scholar named herein for their invaluable service as a Peer Reviewer. Their expertise and commitment to maintaining scholarly standards have significantly contributed to the advancement of academic research.`;
+        return 'IJARCM formally recognizes the esteemed scholar named herein for their invaluable service as a Peer Reviewer. Their expertise and commitment to maintaining scholarly standards have significantly contributed to the advancement of academic research.';
       case 'AWARD':
-        return `${abbr} is honored to present this recognition of outstanding scholarly achievement. The recipient named herein has demonstrated exceptional excellence in research contribution, earning this distinguished acknowledgment from the academic community.`;
+        return 'IJARCM is honored to present this recognition of outstanding scholarly achievement. The recipient named herein has demonstrated exceptional excellence in research contribution, earning this distinguished acknowledgment from the academic community.';
       case 'CONFERENCE':
         return '';
       default:
-        return `${abbr} hereby presents this certificate in formal recognition of distinguished scholarly achievement and contribution to academic excellence.`;
+        return 'IJARCM hereby presents this certificate in formal recognition of distinguished scholarly achievement and contribution to academic excellence.';
     }
   };
 
@@ -341,21 +323,21 @@ export default function Certificate({
 
         {/* Watermark Pattern */}
         <div className="absolute inset-0 opacity-[0.02] pointer-events-none flex items-center justify-center overflow-hidden">
-          <div
+          <div 
             className="font-serif tracking-[0.5em] transform -rotate-12"
-            style={{
+            style={{ 
               fontSize: '140px',
               color: templateStyles.watermarkColor,
               fontWeight: 'bold',
               letterSpacing: '0.3em'
             }}
           >
-            {journalAbbr}
+            IJARCM
           </div>
         </div>
 
         {/* Main Content Wrapper */}
-        <div className="flex-1 flex flex-col px-16 relative" style={{ paddingTop: '86px', paddingBottom: '160px', zIndex: 50 }}>
+        <div className="flex-1 flex flex-col px-16 relative" style={{ paddingTop: '86px', paddingBottom: '150px', zIndex: 50 }}>
           {/* Header Section */}
           <div className="text-center" style={{ marginBottom: '6px' }}>
             <h1
@@ -385,24 +367,26 @@ export default function Certificate({
 
             <p className="text-xs font-bold uppercase tracking-wider" style={{ color: templateStyles.primaryColor, marginBottom: '2px' }}>BY</p>
             <h2 className="text-sm font-semibold tracking-wide" style={{ color: templateStyles.textColor, marginBottom: '4px' }}>
-              {journalDisplayName}
+              International Journal of Academic Research in Commerce &amp; Management (IJARCM)
             </h2>
 
-            <div className="inline-flex items-center gap-4" style={{ fontSize: '0.7rem' }}>
-              {journalIssnPrint && (
-                <>
-                  <span className="font-mono font-medium" style={{ color: templateStyles.textColor }}>ISSN (Print): {journalIssnPrint}</span>
-                  {journalIssnOnline && <span style={{ color: templateStyles.secondaryColor }}>•</span>}
-                </>
-              )}
-              {journalIssnOnline && (
-                <span className="font-mono font-medium" style={{ color: templateStyles.textColor }}>ISSN (Online): {journalIssnOnline}</span>
-              )}
+            <div
+              className="inline-flex items-center gap-4 px-4 rounded-full"
+              style={{
+                background: `linear-gradient(135deg, ${templateStyles.primaryColor}10, ${templateStyles.secondaryColor}10)`,
+                border: `1px solid ${templateStyles.secondaryColor}40`,
+                fontSize: '0.7rem',
+                padding: '2px 14px',
+              }}
+            >
+              <span className="font-mono font-medium" style={{ color: templateStyles.textColor }}>ISSN (Print): {ISSN_PRINT}</span>
+              <span style={{ color: templateStyles.secondaryColor }}>•</span>
+              <span className="font-mono font-medium" style={{ color: templateStyles.textColor }}>ISSN (Online): {ISSN_ONLINE}</span>
             </div>
           </div>
 
           {/* Main Content - Certification Body */}
-          <div className="text-center flex-1 flex flex-col justify-center" style={{ gap: '2px' }}>
+          <div className="text-center flex-1 flex flex-col justify-center" style={{ gap: '6px' }}>
             {/* Description */}
             {getCertificateDescription(type) && (
               <p
@@ -423,24 +407,26 @@ export default function Certificate({
 
             {/* Recipient */}
             <div>
-              <p className="text-xs tracking-[0.15em]" style={{ color: templateStyles.primaryColor, fontWeight: 600, marginBottom: '4px' }}>
-                This Is To Certify That
+              <p className="text-xs uppercase tracking-[0.15em]" style={{ color: templateStyles.primaryColor, fontWeight: 600, marginBottom: '4px' }}>
+                This is to certify that
               </p>
-              <h2
-                style={{
-                  fontSize: '2.2rem',
-                  color: templateStyles.textColor,
-                  fontFamily: 'Georgia, "Times New Roman", serif',
-                  fontWeight: 700,
-                  letterSpacing: '0.05em',
-                  margin: '0 3rem 0',
-                }}
-              >
-                {authorName}
-              </h2>
-              <div className="h-[2px] mx-auto" style={{ width: '20%', background: `linear-gradient(to right, transparent, ${templateStyles.goldAccent}, transparent)`, marginTop: '28px' }} />
+              <div className="relative inline-block">
+                <h2
+                  style={{
+                    fontSize: '2.2rem',
+                    color: templateStyles.textColor,
+                    fontFamily: 'Georgia, "Times New Roman", serif',
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    margin: '0 3rem 4px',
+                  }}
+                >
+                  {authorName}
+                </h2>
+                <div className="h-[2px] mx-auto" style={{ width: '80%', background: `linear-gradient(to right, transparent, ${templateStyles.goldAccent}, transparent)` }} />
+              </div>
               {institution && (
-                <p className="text-sm italic" style={{ color: '#6b7280', marginTop: '4px' }}>from {institution}</p>
+                <p className="text-sm italic" style={{ color: '#6b7280', marginTop: '2px' }}>{institution}</p>
               )}
             </div>
 
@@ -450,12 +436,8 @@ export default function Certificate({
                 <>
                   {conferenceName && (
                     <>
-                      <p className="text-xs italic" style={{ color: '#6b7280', marginBottom: '2px', marginTop: '-8px' }}>
-                        {conferenceParticipationType === 'participation'
-                          ? 'has participated in'
-                          : conferenceParticipationType === 'presentation'
-                          ? 'has presented in'
-                          : 'has participated & presented in'}
+                      <p className="text-xs uppercase tracking-[0.2em]" style={{ color: templateStyles.primaryColor, fontWeight: 600, marginBottom: '3px' }}>
+                        For Participation &amp; Presentation In
                       </p>
                       <h3 className="text-sm font-semibold mx-auto leading-snug" style={{ color: templateStyles.textColor, maxWidth: '700px' }}>
                         &ldquo;{conferenceName}&rdquo;
@@ -463,10 +445,7 @@ export default function Certificate({
                     </>
                   )}
                   {conferenceDates && (
-                    <p className="text-xs text-gray-600 italic" style={{ marginTop: '2px' }}>Organised On {conferenceDates}</p>
-                  )}
-                  {venue && (
-                    <p className="text-xs text-gray-600" style={{ marginTop: '2px' }}>{venue}</p>
+                    <p className="text-xs text-gray-600 italic" style={{ marginTop: '2px' }}>ORGANISED ON {conferenceDates}</p>
                   )}
                 </>
               ) : title && (
@@ -489,7 +468,7 @@ export default function Certificate({
                     <p style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: templateStyles.primaryColor, marginBottom: '2px' }}>
                       Research Topic
                     </p>
-                    <p style={{ fontSize: '0.9rem', fontWeight: 500, color: templateStyles.textColor }}>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 500, fontStyle: 'italic', color: templateStyles.textColor }}>
                       {topic}
                     </p>
                   </div>
@@ -511,55 +490,62 @@ export default function Certificate({
             )}
           </div>
 
-          {/* Date + Signature — normal flow, marginTop:auto pushes to bottom of content area */}
+          {/* Footer row - normal flow, always after flex-1 body */}
           <div
             className="flex justify-between items-end"
-            style={{ marginTop: 'auto', borderTop: `2px solid ${templateStyles.goldAccent}30`, paddingTop: '10px', paddingLeft: '32px', paddingRight: '32px' }}
+            style={{ borderTop: `2px solid ${templateStyles.goldAccent}30`, paddingTop: '12px', paddingLeft: '32px', paddingRight: '32px', paddingBottom: '8px', marginTop: 'auto' }}
           >
             {/* Date Section */}
             <div className="text-left">
-              <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, color: templateStyles.primaryColor, marginBottom: '4px' }}>
-                Date of Issue
-              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="w-4 h-4" style={{ color: templateStyles.primaryColor }} />
+                <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: templateStyles.primaryColor }}>
+                  Date of Issue
+                </span>
+              </div>
               <p className="text-lg font-semibold" style={{ color: templateStyles.textColor }}>
                 {formatDate(displayDate)}
+              </p>
+            </div>
+
+            {/* Certificate Number Section */}
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Shield className="w-4 h-4" style={{ color: templateStyles.primaryColor }} />
+                <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: templateStyles.primaryColor }}>
+                  Certificate Reference
+                </span>
+              </div>
+              <p className="text-lg font-bold font-mono tracking-wider" style={{ color: templateStyles.textColor }}>
+                {certificateNumber}
               </p>
             </div>
 
             {/* Signature Section */}
             <div className="text-right">
               <div className="w-36 flex flex-col items-end">
-                <div style={{ height: '56px', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', width: '100%' }}>
+                <div style={{ height: '64px', display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', width: '100%' }}>
                   <img
                     src={MANAGING_DIRECTOR_SIGNATURE}
                     alt="Authorized Signature"
-                    style={{ maxHeight: '48px', maxWidth: '100%', objectFit: 'contain', filter: 'contrast(1.1)' }}
+                    style={{ maxHeight: '56px', maxWidth: '100%', objectFit: 'contain', filter: 'contrast(1.1)' }}
                   />
                 </div>
                 <div className="w-full pt-2" style={{ borderTop: `2px solid ${templateStyles.primaryColor}` }}>
-                  <p className="text-sm font-semibold" style={{ color: templateStyles.textColor }}>Managing Editor</p>
-                  <p className="text-xs text-gray-500">{journalAbbr}</p>
+                  <p className="text-sm font-semibold" style={{ color: templateStyles.textColor }}>Managing Director</p>
+                  <p className="text-xs text-gray-500">IJARCM</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Certificate Reference + Verification — absolute, fixed above bottom ornament */}
-          <div
-            className="text-center"
-            style={{ position: 'absolute', bottom: '150px', left: 0, right: 0 }}
-          >
-            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, color: templateStyles.primaryColor, marginBottom: '4px' }}>
-              Certificate Reference
-            </p>
-            <p className="text-base font-bold font-mono tracking-wider" style={{ color: templateStyles.textColor, marginBottom: '6px' }}>
-              {certificateNumber}
-            </p>
+          {/* Verification */}
+          <div className="text-center mt-2">
             <p className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: templateStyles.primaryColor }}>
-              Official Verification &amp; DOI Portal
+              Official Verification & DOI Portal
             </p>
-            <p className="text-sm font-mono font-bold tracking-wide" style={{ color: templateStyles.textColor }}>
-              {journalWebsite}/verify/{certificateNumber}
+            <p className="text-base font-mono font-bold tracking-wide" style={{ color: templateStyles.textColor }}>
+              ijarcm.com/verify/{certificateNumber}
             </p>
           </div>
 

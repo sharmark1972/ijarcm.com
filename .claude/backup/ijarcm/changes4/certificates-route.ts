@@ -5,10 +5,11 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-function generateCertificateNumber(abbr = 'IJARCM'): string {
+// Generate a unique certificate number
+function generateCertificateNumber(): string {
   const year = new Date().getFullYear();
   const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `${abbr}-${year}-${randomNum}`;
+  return `IJARCM-${year}-${randomNum}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { paperId, userId, type = 'PUBLICATION', conferenceName, authorName, institution, topic, prize, customDate, journalId } = body;
+    const { paperId, userId, type = 'PUBLICATION', conferenceName, authorName, institution, topic, prize, customDate } = body;
 
     let paper: {
       id: string;
@@ -151,15 +152,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch journal abbreviation if journalId provided
-    let journalAbbr = 'IJARCM';
-    if (journalId) {
-      const journal = await prisma.journal.findUnique({ where: { id: journalId }, select: { abbreviation: true } });
-      if (journal) journalAbbr = journal.abbreviation;
-    }
-
     // Generate certificate
-    const certificateNumber = generateCertificateNumber(journalAbbr);
+    const certificateNumber = generateCertificateNumber();
 
     // Create certificate with proper data structure
     const certificateData = {
@@ -173,7 +167,6 @@ export async function POST(request: NextRequest) {
       customDate: customDate ? new Date(customDate) : null,
       ...(type !== 'CONFERENCE' && paperId && { paperId }),
       ...(userId && { userId }),
-      ...(journalId && { journalId }),
     };
 
     const certificate = await prisma.certificate.create({
@@ -224,34 +217,33 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
     const paperId = searchParams.get('paperId');
     const certificateNumber = searchParams.get('certificateNumber');
-    const search = searchParams.get('search');
-    const typeFilter = searchParams.get('type');
 
-    const baseWhere: Record<string, unknown> = { isValid: true };
+    const whereClause: {
+      isValid: boolean;
+      userId?: string;
+      paperId?: string;
+      certificateNumber?: string;
+    } = {
+      isValid: true,
+    };
 
     // If not admin, only show user's own certificates
     if (session.user.role !== 'ADMIN') {
-      baseWhere.userId = session.user.id;
+      whereClause.userId = session.user.id;
     } else if (userId) {
-      baseWhere.userId = userId;
+      whereClause.userId = userId;
     }
 
-    if (paperId) baseWhere.paperId = paperId;
-    if (certificateNumber) baseWhere.certificateNumber = certificateNumber;
-    if (typeFilter && typeFilter !== 'ALL') baseWhere.type = typeFilter;
+    if (paperId) {
+      whereClause.paperId = paperId;
+    }
+
+    if (certificateNumber) {
+      whereClause.certificateNumber = certificateNumber;
+    }
 
     const certificates = await prisma.certificate.findMany({
-      where: {
-        ...baseWhere,
-        ...(search ? {
-          OR: [
-            { authorName: { contains: search } },
-            { certificateNumber: { contains: search } },
-            { title: { contains: search } },
-            { institution: { contains: search } },
-          ],
-        } : {}),
-      },
+      where: whereClause,
       include: {
         paper: {
           select: {
@@ -267,13 +259,6 @@ export async function GET(request: NextRequest) {
             lastName: true,
             email: true,
             institution: true,
-          },
-        },
-        journal: {
-          select: {
-            id: true,
-            name: true,
-            abbreviation: true,
           },
         },
       },

@@ -1,21 +1,8 @@
 // Certificate Types and Constants
 
-// IJARCM default ISSN (kept for backward compatibility)
+// ISSN Numbers
 export const ISSN_PRINT = '2455-0116';
 export const ISSN_ONLINE = '2395-6410';
-
-export interface JournalInfo {
-  id: string;
-  name: string;
-  abbreviation: string;
-  website?: string | null;
-  issnPrint?: string | null;
-  issnOnline?: string | null;
-  origin?: string | null;
-  doiAllotted: boolean;
-  isDefault: boolean;
-  isActive: boolean;
-}
 
 // Template types
 export type CertificateTemplate = 'classic' | 'modern' | 'elegant';
@@ -38,10 +25,8 @@ export interface CertificateProps {
   conferenceName?: string;
   conferenceDates?: string;
   topic?: string;
-  venue?: string;
   prize?: string;
   customDate?: string;
   template?: CertificateTemplate;
   conferenceParticipationType?: 'participation' | 'presentation' | 'both';
-  journal?: JournalInfo | null;
 }

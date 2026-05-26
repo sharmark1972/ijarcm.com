@@ -12,20 +12,7 @@ import {
   Check
 } from 'lucide-react';
 import Certificate from '@/components/Certificate';
-import { CERTIFICATE_TEMPLATES, CertificateTemplate, JournalInfo } from '@/types/certificate';
-
-interface Journal {
-  id: string;
-  name: string;
-  abbreviation: string;
-  website?: string | null;
-  issnPrint?: string | null;
-  issnOnline?: string | null;
-  origin?: string | null;
-  doiAllotted: boolean;
-  isDefault: boolean;
-  isActive: boolean;
-}
+import { CERTIFICATE_TEMPLATES, CertificateTemplate } from '@/types/certificate';
 
 interface Conference {
   id: string;
@@ -49,8 +36,6 @@ export default function GenerateCertificatePage() {
   const { isAdmin } = useAuth();
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [journals, setJournals] = useState<Journal[]>([]);
-  const [selectedJournalId, setSelectedJournalId] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   
@@ -62,7 +47,6 @@ export default function GenerateCertificatePage() {
   const [customName, setCustomName] = useState('');
   const [customInstitution, setCustomInstitution] = useState('');
   const [topic, setTopic] = useState('');
-  const [venue, setVenue] = useState('');
   const [prize, setPrize] = useState('');
   const [customDate, setCustomDate] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate>('classic');
@@ -154,26 +138,18 @@ export default function GenerateCertificatePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [conferencesResponse, usersResponse, journalsResponse] = await Promise.all([
-          fetch('/api/admin/conferences?limit=100'),
-          fetch('/api/admin/users?limit=100'),
-          fetch('/api/admin/journals'),
-        ]);
-
+        // Fetch conferences
+        const conferencesResponse = await fetch('/api/admin/conferences?limit=100');
         if (conferencesResponse.ok) {
           const conferencesData = await conferencesResponse.json();
           setConferences(conferencesData.conferences || []);
         }
+
+        // Fetch users
+        const usersResponse = await fetch('/api/admin/users?limit=100');
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           setUsers(usersData.users || []);
-        }
-        if (journalsResponse.ok) {
-          const journalsData = await journalsResponse.json();
-          const activeJournals: Journal[] = (journalsData.journals || []).filter((j: Journal) => j.isActive);
-          setJournals(activeJournals);
-          const defaultJournal = activeJournals.find((j: Journal) => j.isDefault);
-          if (defaultJournal) setSelectedJournalId(defaultJournal.id);
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -243,7 +219,6 @@ export default function GenerateCertificatePage() {
         topic?: string;
         prize?: string;
         customDate?: string;
-        journalId?: string;
       } = {
         type: certificateType,
         authorName: customName,
@@ -251,7 +226,6 @@ export default function GenerateCertificatePage() {
         topic: topic || undefined,
         prize: prize || undefined,
         customDate: customDate || undefined,
-        journalId: selectedJournalId || undefined,
       };
 
       // Only include userId if not generating without user
@@ -435,37 +409,6 @@ export default function GenerateCertificatePage() {
                     <p className="text-xs font-medium mt-1 text-gray-600">{template.name}</p>
                   </button>
                 ))}
-              </div>
-
-              {/* Journal / Site Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Journal / Site <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedJournalId}
-                  onChange={(e) => setSelectedJournalId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Choose a journal...</option>
-                  {journals.map((journal) => (
-                    <option key={journal.id} value={journal.id}>
-                      {journal.abbreviation} — {journal.name}
-                    </option>
-                  ))}
-                </select>
-                {selectedJournalId && (() => {
-                  const j = journals.find(j => j.id === selectedJournalId);
-                  if (!j) return null;
-                  return (
-                    <div className="mt-2 border border-gray-200 rounded-md bg-gray-50 p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-600">
-                      {j.issnPrint && <span><span className="font-medium">ISSN Print:</span> {j.issnPrint}</span>}
-                      {j.issnOnline && <span><span className="font-medium">ISSN Online:</span> {j.issnOnline}</span>}
-                      {j.origin && <span><span className="font-medium">Origin:</span> {j.origin}</span>}
-                      {j.website && <span><span className="font-medium">Website:</span> {j.website.replace(/^https?:\/\//, '')}</span>}
-                    </div>
-                  );
-                })()}
               </div>
 
               {/* Conference Selection — Hybrid */}
@@ -779,8 +722,8 @@ export default function GenerateCertificatePage() {
                 </div>
               </div>
 
-              {/* Row: Topic + Venue + Prize */}
-              <div className="grid grid-cols-3 gap-4">
+              {/* Row: Topic + Prize */}
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Topic (Optional)
@@ -790,18 +733,6 @@ export default function GenerateCertificatePage() {
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
                     placeholder="Conference topic"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Venue (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={venue}
-                    onChange={(e) => setVenue(e.target.value)}
-                    placeholder="Enter venue"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -879,14 +810,12 @@ export default function GenerateCertificatePage() {
                     conferenceName={generatedCertificate.conferenceName}
                     conferenceDates={generatedCertificate.conferenceDates}
                     topic={topic}
-                    venue={venue}
                     prize={prize}
                     customDate={generatedCertificate.customDate}
                     showDownload={false}
                     isPreview={false}
                     template={selectedTemplate}
                     conferenceParticipationType={conferenceParticipationType}
-                    journal={journals.find(j => j.id === selectedJournalId) as JournalInfo | undefined}
                   />
                 </div>
 
@@ -955,14 +884,12 @@ export default function GenerateCertificatePage() {
                   conferenceName={generatedCertificate.conferenceName}
                   conferenceDates={generatedCertificate.conferenceDates}
                   topic={topic}
-                  venue={venue}
                   prize={prize}
                   customDate={generatedCertificate.customDate}
                   showDownload={false}
                   isPreview={false}
                   template={selectedTemplate}
                   conferenceParticipationType={conferenceParticipationType}
-                  journal={journals.find(j => j.id === selectedJournalId) as JournalInfo | undefined}
                 />
               </div>
             </div>
