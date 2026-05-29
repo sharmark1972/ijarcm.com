@@ -64,7 +64,6 @@ export default function AdminIssuesPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [generatingCovers, setGeneratingCovers] = useState(false);
-  const [generatingCover, setGeneratingCover] = useState(false);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -198,36 +197,6 @@ export default function AdminIssuesPage() {
     } catch (error) {
       console.error('Error updating issue:', error);
       alert('Failed to update issue');
-    }
-  };
-
-  const handleGenerateSingleCover = async () => {
-    if (!formData.title || !formData.volume || !formData.issueNumber || !formData.year) {
-      alert('Pehle Title, Volume, Issue Number aur Year fill karo');
-      return;
-    }
-    setGeneratingCover(true);
-    try {
-      const response = await fetch('/api/admin/issues/generate-cover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          volume: formData.volume,
-          issueNumber: formData.issueNumber,
-          year: formData.year,
-          title: formData.title,
-        }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setFormData(prev => ({ ...prev, coverImage: data.coverUrl }));
-      } else {
-        alert(data.error || 'Cover generate nahi ho saka');
-      }
-    } catch {
-      alert('Cover generate nahi ho saka');
-    } finally {
-      setGeneratingCover(false);
     }
   };
 
@@ -436,34 +405,15 @@ export default function AdminIssuesPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Cover Image
+                      Cover Image URL
                     </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={formData.coverImage}
-                        onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Enter URL or click Generate Cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleGenerateSingleCover}
-                        disabled={generatingCover}
-                        className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 disabled:opacity-50 whitespace-nowrap"
-                      >
-                        {generatingCover ? 'Generating...' : 'Generate Cover'}
-                      </button>
-                    </div>
-                    {formData.coverImage && (
-                      <div className="mt-3">
-                        <img
-                          src={formData.coverImage}
-                          alt="Cover Preview"
-                          className="h-40 object-contain rounded border border-gray-200"
-                        />
-                      </div>
-                    )}
+                    <input
+                      type="url"
+                      value={formData.coverImage}
+                      onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://example.com/cover.jpg"
+                    />
                   </div>
 
                   <div className="flex items-center">

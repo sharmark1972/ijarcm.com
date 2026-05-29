@@ -484,41 +484,18 @@ export async function DELETE(
 
     // Delete associated records first (due to foreign key constraints)
     await prisma.$transaction(async (tx) => {
-      // Delete downloads
-      await tx.download.deleteMany({
-        where: { paperId }
-      });
-
-      // Delete reviews
-      await tx.review.deleteMany({
-        where: { paperId }
-      });
-
-      // Delete authors
-      await tx.paperAuthor.deleteMany({
-        where: { paperId }
-      });
-
-      // Delete plagiarism checks
-      await tx.plagiarismCheck.deleteMany({
-        where: { paperId }
-      });
-
-      // Delete certificates
-      await tx.certificate.deleteMany({
-        where: { paperId }
-      });
-
-      // Delete review assignments
-      await tx.reviewAssignment.deleteMany({
-        where: { paperId }
-      });
-
-      // Delete the paper
-      await tx.paper.delete({
-        where: { id: paperId }
-      });
-    });
+      await tx.download.deleteMany({ where: { paperId } });
+      await tx.bookmark.deleteMany({ where: { paperId } });
+      await tx.review.deleteMany({ where: { paperId } });
+      await tx.reviewAssignment.deleteMany({ where: { paperId } });
+      await tx.paperAuthor.deleteMany({ where: { paperId } });
+      await tx.plagiarismCheck.deleteMany({ where: { paperId } });
+      await tx.certificate.deleteMany({ where: { paperId } });
+      await tx.citation.deleteMany({ where: { paperId } });
+      await tx.archivePaper.deleteMany({ where: { paperId } });
+      await tx.paperContent.deleteMany({ where: { paperId } });
+      await tx.paper.delete({ where: { id: paperId } });
+    }, { timeout: 30000 });
 
     // Delete the file from filesystem
     try {

@@ -3,6 +3,8 @@
 > Last updated: 2026-05-25 (Updated with hybrid conference & participation type)
 > Scope: Certificate generation, display, and management
 
+> Related research-paper workflow: see [Research paper audit.md](../../docs/Research%20paper%20audit.md)
+
 ---
 
 ## System Overview

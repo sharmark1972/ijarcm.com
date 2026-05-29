@@ -80,7 +80,7 @@ export async function buildStoredFileResponse(
     body = new Uint8Array(await readFile(localPath));
   }
 
-  return new NextResponse(body, {
+  return new NextResponse(Buffer.from(body), {
     status: 200,
     headers: {
       'Content-Type': contentType,

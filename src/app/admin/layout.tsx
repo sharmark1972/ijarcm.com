@@ -18,7 +18,8 @@ import {
   DollarSign,
   Award,
   Eye,
-  Globe
+  Globe,
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -96,6 +97,12 @@ export default function AdminLayout({
       name: 'Papers',
       href: '/admin/papers',
       icon: FileText,
+      current: false,
+    },
+    {
+      name: 'Research Papers',
+      href: '/admin/research-papers',
+      icon: Sparkles,
       current: false,
     },
     {

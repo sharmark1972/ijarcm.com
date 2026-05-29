@@ -27,7 +27,8 @@ import {
   ArrowRight,
   Search,
   DollarSign,
-  Award
+  Award,
+  Sparkles
 } from 'lucide-react';
 
 interface SearchResult {
@@ -481,6 +482,13 @@ export default function AdminDashboard() {
               >
                 <FileText className="h-5 w-5 mr-3 text-green-600" />
                 Manage Papers
+              </Link>
+              <Link
+                href="/admin/research-papers"
+                className="w-full flex items-center px-4 py-3 text-left text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <Sparkles className="h-5 w-5 mr-3 text-violet-600" />
+                Research Paper Studio
               </Link>
               <Link
                 href="/admin/ebooks"

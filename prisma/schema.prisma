@@ -40,6 +40,7 @@ model User {
   paperAuthors        PaperAuthor[]
   submittedPapers     Paper[]            @relation("PaperSubmitter")
   plagiarismChecks    PlagiarismCheck[]  @relation("PlagiarismChecker")
+  researchPaperDrafts ResearchPaperDraft[] @relation("ResearchPaperCreator")
   assignedReviews     ReviewAssignment[] @relation("AssignedByUser")
   reviewerAssignments ReviewAssignment[] @relation("ReviewerAssignments")
   reviews             Review[]
@@ -66,6 +67,7 @@ model Issue {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   papers      Paper[]
+  researchPaperDrafts ResearchPaperDraft[]
 
   @@unique([volume, issueNumber])
   @@index([year])
@@ -120,6 +122,65 @@ model Paper {
   @@index([doi])
   @@index([doiStatus])
   @@map("papers")
+}
+
+model ResearchPaperDraft {
+  id                 String                 @id @default(uuid())
+  title              String?                @db.Text
+  shortTitle         String?                @map("short_title") @db.Text
+  abstract           String?                @db.LongText
+  keywords           Json?
+  doi                String?                @db.VarChar(200)
+  sourceFilePath     String?                @map("source_file_path") @db.VarChar(500)
+  sourceFileName     String?                @map("source_file_name") @db.VarChar(255)
+  sourceFileSize     Int?                   @map("source_file_size")
+  extractedText      String?                @map("extracted_text") @db.LongText
+  pdfPath            String?                @map("pdf_path") @db.VarChar(500)
+  previewPdfPath     String?                @map("preview_pdf_path") @db.VarChar(500)
+  status             ResearchPaperStatus    @default(DRAFT)
+  issueId            String?                @map("issue_id")
+  createdBy          String                 @map("created_by")
+  publishedAt        DateTime?              @map("published_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+  issue              Issue?                 @relation(fields: [issueId], references: [id])
+  creator            User                   @relation("ResearchPaperCreator", fields: [createdBy], references: [id])
+  authors            ResearchPaperAuthor[]
+  sections           ResearchPaperSection[]
+
+  @@index([status])
+  @@index([issueId])
+  @@index([createdBy])
+  @@index([publishedAt])
+  @@map("research_paper_drafts")
+}
+
+model ResearchPaperAuthor {
+  id           String             @id @default(uuid())
+  draftId      String             @map("draft_id")
+  name         String             @db.VarChar(255)
+  email        String?            @db.VarChar(255)
+  affiliation  String?            @db.VarChar(500)
+  authorOrder  Int                @default(0) @map("author_order")
+  isCorresponding Boolean         @default(false) @map("is_corresponding")
+  draft        ResearchPaperDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId])
+  @@index([authorOrder])
+  @@map("research_paper_authors")
+}
+
+model ResearchPaperSection {
+  id           String             @id @default(uuid())
+  draftId      String             @map("draft_id")
+  heading      String             @db.VarChar(500)
+  content      String             @db.LongText
+  sectionOrder Int                @default(0) @map("section_order")
+  draft        ResearchPaperDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId])
+  @@index([sectionOrder])
+  @@map("research_paper_sections")
 }
 
 model Review {
@@ -809,6 +870,18 @@ enum PaperStatus {
   REJECTED
 
   @@map("paper_status")
+}
+
+enum ResearchPaperStatus {
+  DRAFT
+  UPLOADED
+  EXTRACTED
+  EDITING
+  READY
+  PDF_GENERATED
+  PUBLISHED
+
+  @@map("research_paper_status")
 }
 
 enum ReviewRecommendation {
