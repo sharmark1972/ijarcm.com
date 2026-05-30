@@ -26,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { SectionEditor } from '@/components/admin/research-papers/SectionEditor';
 import type { ResearchPaperDraft } from '@/types/research-paper-workflow';
 
 interface AdminIssue {
@@ -57,7 +56,6 @@ interface BackendDraft {
     id: string;
     heading: string;
     content: string;
-    isFullWidth?: boolean;
   }>;
 }
 
@@ -77,7 +75,7 @@ function blankDraft(): ResearchPaperDraft {
     confidence: 0,
     similarityScore: 0,
     sections: [
-      { id: 'abstract', heading: 'Abstract', original: '', cleaned: '', notes: [], status: 'missing', isFullWidth: true },
+      { id: 'abstract', heading: 'Abstract', original: '', cleaned: '', notes: [], status: 'missing' },
     ],
   };
 }
@@ -187,7 +185,6 @@ export default function NewResearchPaperPage() {
           cleaned: section.content,
           notes: [],
           status: section.content.trim() ? 'complete' as const : 'missing' as const,
-          isFullWidth: section.isFullWidth ?? true,
         }))
       : blankDraft().sections;
 
@@ -201,7 +198,6 @@ export default function NewResearchPaperPage() {
       authors: backendDraft.authors.map((author) => ({
         name: author.name,
         email: author.email || '',
-        affiliation: author.affiliation || '',
         corresponding: author.isCorresponding,
       })),
       doi: backendDraft.doi || '',
@@ -245,7 +241,6 @@ export default function NewResearchPaperPage() {
           cleaned: '',
           notes: [],
           status: 'missing',
-          isFullWidth: true,
         },
       ],
     }));
@@ -282,14 +277,7 @@ export default function NewResearchPaperPage() {
   const addAuthor = () => {
     setDraft((prev) => ({
       ...prev,
-      authors: [...prev.authors, { name: '', email: '', affiliation: '', corresponding: false }],
-    }));
-  };
-
-  const removeAuthor = (index: number) => {
-    setDraft((prev) => ({
-      ...prev,
-      authors: prev.authors.filter((_, i) => i !== index),
+      authors: [...prev.authors, { name: '', email: '', corresponding: false }],
     }));
   };
 
@@ -303,15 +291,14 @@ export default function NewResearchPaperPage() {
       .map((author) => ({
         name: author.name.trim(),
         email: author.email?.trim() || null,
-        affiliation: (author as any).affiliation?.trim() || null,
+        affiliation: null,
         isCorresponding: author.corresponding,
       }))
-      .filter((author) => author.name),
+      .filter((author) => author.name || author.email || author.affiliation),
     sections: draft.sections
       .map((section) => ({
         heading: section.heading.trim(),
         content: section.cleaned.trim(),
-        isFullWidth: section.isFullWidth ?? true,
       }))
       .filter((section) => section.heading || section.content),
   });
@@ -525,21 +512,10 @@ export default function NewResearchPaperPage() {
                   <p className="text-sm text-slate-500">No authors extracted yet.</p>
                 ) : (
                   draft.authors.map((author, index) => (
-                    <div key={`${author.name}-${index}`} className="rounded-lg border border-slate-200 p-3 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-slate-500">Author {index + 1}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => removeAuthor(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    <div key={`${author.name}-${index}`} className="grid gap-2">
                       <Input
                         value={author.name}
-                        placeholder="Author name *"
+                        placeholder="Author name"
                         onChange={(event) =>
                           setDraft((prev) => {
                             const authors = [...prev.authors];
@@ -549,19 +525,8 @@ export default function NewResearchPaperPage() {
                         }
                       />
                       <Input
-                        value={(author as any).affiliation || ''}
-                        placeholder="Affiliation / Institution"
-                        onChange={(event) =>
-                          setDraft((prev) => {
-                            const authors = [...prev.authors];
-                            authors[index] = { ...authors[index], affiliation: event.target.value };
-                            return { ...prev, authors };
-                          })
-                        }
-                      />
-                      <Input
                         value={author.email || ''}
-                        placeholder="Email (optional)"
+                        placeholder="Email optional"
                         onChange={(event) =>
                           setDraft((prev) => {
                             const authors = [...prev.authors];
@@ -637,9 +602,11 @@ export default function NewResearchPaperPage() {
                 </div>
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700">Abstract</label>
-                  <SectionEditor
-                    content={draft.abstract}
-                    onChange={(html) => setDraft((prev) => ({ ...prev, abstract: html }))}
+                  <Textarea
+                    rows={4}
+                    value={draft.abstract}
+                    placeholder="Extracted abstract"
+                    onChange={(event) => setDraft((prev) => ({ ...prev, abstract: event.target.value }))}
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -755,7 +722,7 @@ export default function NewResearchPaperPage() {
                       />
                     </div>
 
-                    <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <Badge variant={active.status === 'complete' ? 'default' : 'outline'}>
                           {active.status === 'complete' ? 'Ready' : 'Empty'}
@@ -763,25 +730,24 @@ export default function NewResearchPaperPage() {
                         <Badge variant="outline" className="bg-white">
                           {active.cleaned.length} chars
                         </Badge>
-                        {!active.isFullWidth && <Badge className="bg-blue-100 text-blue-700">2-column</Badge>}
                       </div>
-                      <Select
-                        value={active.isFullWidth ? 'full' : '2col'}
-                        onValueChange={(value) => updateActiveSection({ isFullWidth: value === 'full' })}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-white"
+                        onClick={() => updateSectionContent(active.cleaned || active.original)}
                       >
-                        <SelectTrigger className="w-40 bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="full">1-column (Full width)</SelectItem>
-                          <SelectItem value="2col">2-column</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <FileText className="h-4 w-4" />
+                        Improve text
+                      </Button>
                     </div>
 
-                    <SectionEditor
-                      content={active.cleaned}
-                      onChange={(html) => updateSectionContent(html)}
+                    <Textarea
+                      rows={14}
+                      value={active.cleaned}
+                      placeholder="Section content will appear here after the file is read"
+                      className="min-h-[360px] resize-y border-slate-300 bg-white text-base leading-7"
+                      onChange={(event) => updateSectionContent(event.target.value)}
                     />
                   </div>
                 </div>

@@ -1,9 +1,13 @@
 import { ResearchPaperStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { extractDocumentText, extractDocumentHtml } from './docx-extractor';
+import {
+  extractDocumentTextFromBuffer,
+  extractDocumentHtmlFromBuffer,
+} from './docx-extractor';
 import { parseResearchPaperText } from './parser';
 import {
   removeStoredResearchPaperFile,
+  validateResearchPaperFile,
   storeResearchPaperFile,
 } from './storage';
 import { validateDraftUpdate, validatePublishReady } from './validation';
@@ -27,45 +31,52 @@ const includeDraftRelations = {
 };
 
 export async function createResearchPaperDraftFromUpload(file: File, createdBy: string, issueId?: string | null) {
-  const storedFile = await storeResearchPaperFile(file);
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
+  const extension = validateResearchPaperFile(file);
   const [extracted, extractedHtml] = await Promise.all([
-    extractDocumentText(storedFile.absolutePath, storedFile.extension),
-    extractDocumentHtml(storedFile.absolutePath, storedFile.extension),
+    extractDocumentTextFromBuffer(fileBuffer, extension),
+    extractDocumentHtmlFromBuffer(fileBuffer, extension),
   ]);
+  const storedFile = await storeResearchPaperFile(file, fileBuffer);
   const parsed = parseResearchPaperText(extracted.text);
   const htmlSections = mapSectionsToHtml(extractedHtml.html, parsed.sections);
 
-  return prisma.researchPaperDraft.create({
-    data: {
-      title: parsed.title || null,
-      abstract: parsed.abstract || null,
-      keywords: parsed.keywords,
-      issueId: issueId || null,
-      createdBy,
-      sourceFilePath: storedFile.relativePath,
-      sourceFileName: storedFile.originalName,
-      sourceFileSize: storedFile.size,
-      extractedText: extracted.text || null,
-      status: extracted.text ? ResearchPaperStatus.EXTRACTED : ResearchPaperStatus.UPLOADED,
-      authors: {
-        create: parsed.authors.map((author, index) => ({
-          name: author.name,
-          email: author.email || null,
-          affiliation: author.affiliation || parsed.affiliation || null,
-          authorOrder: index,
-          isCorresponding: Boolean(author.isCorresponding),
-        })),
+  try {
+    return await prisma.researchPaperDraft.create({
+      data: {
+        title: parsed.title || null,
+        abstract: parsed.abstract || null,
+        keywords: parsed.keywords,
+        issueId: issueId || null,
+        createdBy,
+        sourceFilePath: storedFile.fileUrl,
+        sourceFileName: storedFile.originalName,
+        sourceFileSize: storedFile.size,
+        extractedText: extracted.text || null,
+        status: extracted.text ? ResearchPaperStatus.EXTRACTED : ResearchPaperStatus.UPLOADED,
+        authors: {
+          create: parsed.authors.map((author, index) => ({
+            name: author.name,
+            email: author.email || null,
+            affiliation: author.affiliation || parsed.affiliation || null,
+            authorOrder: index,
+            isCorresponding: Boolean(author.isCorresponding),
+          })),
+        },
+        sections: {
+          create: htmlSections.map((section, index) => ({
+            heading: section.heading,
+            content: section.content,
+            sectionOrder: index,
+          })),
+        },
       },
-      sections: {
-        create: htmlSections.map((section, index) => ({
-          heading: section.heading,
-          content: section.content,
-          sectionOrder: index,
-        })),
-      },
-    },
-    include: includeDraftRelations,
-  });
+      include: includeDraftRelations,
+    });
+  } catch (error) {
+    await removeStoredResearchPaperFile(storedFile.fileUrl);
+    throw error;
+  }
 }
 
 function extractAllHtmlHeadings(fullHtml: string): { text: string; index: number; endIndex: number }[] {

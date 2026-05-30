@@ -41,8 +41,7 @@ export interface ResearchPaperDraftUpdateInput {
 
 export interface StoredResearchPaperFile {
   originalName: string;
-  relativePath: string;
-  absolutePath: string;
+  fileUrl: string;
   size: number;
   extension: string;
 }

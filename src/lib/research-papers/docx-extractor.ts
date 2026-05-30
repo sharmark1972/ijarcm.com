@@ -12,6 +12,14 @@ export interface ExtractedDocumentHtml {
 }
 
 export async function extractDocumentText(filePath: string, extension: string): Promise<ExtractedDocumentText> {
+  const buffer = await readFile(filePath);
+  return extractDocumentTextFromBuffer(buffer, extension);
+}
+
+export async function extractDocumentTextFromBuffer(
+  buffer: Buffer,
+  extension: string,
+): Promise<ExtractedDocumentText> {
   if (extension !== '.docx') {
     return {
       text: '',
@@ -19,7 +27,6 @@ export async function extractDocumentText(filePath: string, extension: string): 
     };
   }
 
-  const buffer = await readFile(filePath);
   const result = await mammoth.extractRawText({ buffer });
 
   return {
@@ -29,6 +36,14 @@ export async function extractDocumentText(filePath: string, extension: string): 
 }
 
 export async function extractDocumentHtml(filePath: string, extension: string): Promise<ExtractedDocumentHtml> {
+  const buffer = await readFile(filePath);
+  return extractDocumentHtmlFromBuffer(buffer, extension);
+}
+
+export async function extractDocumentHtmlFromBuffer(
+  buffer: Buffer,
+  extension: string,
+): Promise<ExtractedDocumentHtml> {
   if (extension !== '.docx') {
     return {
       html: '',
@@ -36,7 +51,6 @@ export async function extractDocumentHtml(filePath: string, extension: string): 
     };
   }
 
-  const buffer = await readFile(filePath);
   const result = await mammoth.convertToHtml(
     { buffer },
     {

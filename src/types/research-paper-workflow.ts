@@ -27,6 +27,7 @@ export interface ResearchSection {
   cleaned: string;
   notes: string[];
   status: SectionStatus;
+  isFullWidth?: boolean;
 }
 
 export interface ResearchPaperDraft {
@@ -41,6 +42,7 @@ export interface ResearchPaperDraft {
   authors: Array<{
     name: string;
     email?: string;
+    affiliation?: string;
     corresponding: boolean;
   }>;
   doi?: string;

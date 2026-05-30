@@ -1,10 +1,10 @@
-import { mkdir, readFile, writeFile } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { join } from 'path';
-import { pathToFileURL } from 'url';
 import { chromium } from 'playwright';
 import { prisma } from '@/lib/prisma';
+import { deleteFromR2, uploadToR2 } from '@/lib/r2-upload';
 
-const PDF_ROOT = join(process.cwd(), 'public', 'uploads', 'research-papers');
+const PDF_FOLDER_PREFIX = 'research-papers/pdfs';
 
 export async function generateResearchPaperPdf(draftId: string, mode: 'preview' | 'final' = 'preview') {
   const draft = await prisma.researchPaperDraft.findUnique({
@@ -18,15 +18,9 @@ export async function generateResearchPaperPdf(draftId: string, mode: 'preview' 
 
   if (!draft) throw new Error('Research paper draft not found.');
 
-  const folder = join(PDF_ROOT, draft.id);
-  await mkdir(folder, { recursive: true });
-
-  const fileName = mode === 'final' ? 'research-paper.pdf' : 'research-paper-preview.pdf';
-  const absolutePath = join(folder, fileName);
-  const relativePath = `/uploads/research-papers/${draft.id}/${fileName}`;
   const html = await buildPdfHtml(draft);
-
   const browser = await chromium.launch({ headless: true });
+
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle' });
@@ -43,22 +37,33 @@ export async function generateResearchPaperPdf(draftId: string, mode: 'preview' 
       </div>`,
       margin: { top: '10mm', bottom: '18mm', left: '0', right: '0' },
     });
-    await writeFile(absolutePath, pdf);
+
+    const fileName = mode === 'final' ? 'research-paper.pdf' : 'research-paper-preview.pdf';
+    const path = await uploadToR2(
+      Buffer.from(pdf),
+      fileName,
+      `${PDF_FOLDER_PREFIX}/${draft.id}`,
+      'application/pdf',
+    );
+
+    try {
+      await prisma.researchPaperDraft.update({
+        where: { id: draft.id },
+        data: mode === 'final'
+          ? { pdfPath: path, status: 'PDF_GENERATED' }
+          : { previewPdfPath: path },
+      });
+    } catch (error) {
+      await deleteFromR2(path);
+      throw error;
+    }
+
+    return {
+      path,
+    };
   } finally {
     await browser.close();
   }
-
-  await prisma.researchPaperDraft.update({
-    where: { id: draft.id },
-    data: mode === 'final'
-      ? { pdfPath: relativePath, status: 'PDF_GENERATED' }
-      : { previewPdfPath: relativePath },
-  });
-
-  return {
-    path: relativePath,
-    absolutePath,
-  };
 }
 
 async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPaperDraft.findUnique>> & Record<string, any>) {
@@ -145,15 +150,15 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
         </section>
       </section>
 
-      <main class="pdf-content">
+      <main class="pdf-content" style="column-count: 2;">
         ${truncateAbstract(draft.abstract || '', 250).isTruncated ? `
-          <section class="pdf-content-section">
+          <section class="pdf-content-section" style="column-span: all;">
             <h3>Abstract</h3>
             <p>${escapeHtml(draft.abstract || '')}</p>
           </section>
         ` : ''}
         ${draft.sections.map((section: any) => `
-          <section class="pdf-content-section">
+          <section class="pdf-content-section" style="${section.isFullWidth ? 'column-span: all;' : ''}">
             <h3>${escapeHtml(section.heading)}</h3>
             ${section.content || ''}
           </section>

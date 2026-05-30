@@ -176,6 +176,7 @@ model ResearchPaperSection {
   heading      String             @db.VarChar(500)
   content      String             @db.LongText
   sectionOrder Int                @default(0) @map("section_order")
+  isFullWidth  Boolean            @default(true) @map("is_full_width")
   draft        ResearchPaperDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
 
   @@index([draftId])
