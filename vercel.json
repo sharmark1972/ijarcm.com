@@ -1,4 +1,4 @@
 {
   "installCommand": "yarn install --ignore-optional",
-  "buildCommand": "yarn build"
+  "buildCommand": "yarn prisma migrate deploy && yarn build"
 }
