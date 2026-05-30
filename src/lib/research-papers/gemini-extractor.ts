@@ -46,25 +46,17 @@ Return ONLY this JSON structure:
 Research paper text:
 `;
 
-export async function extractWithGemini(plainText: string): Promise<GeminiExtractedData | null> {
-  const textSample = plainText.slice(0, 3000);
+// Called individually from frontend step-by-step flow
+export async function tryGeminiOnly(plainText: string): Promise<Omit<GeminiExtractedData, 'extractionMethod'> | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+  return tryGemini(apiKey, plainText.slice(0, 3000));
+}
 
-  // 1. Try Gemini first
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    const result = await tryGemini(geminiKey, textSample);
-    if (result) return { ...result, extractionMethod: 'gemini' };
-  }
-
-  // 2. Fallback to ZAI
-  const zaiKey = process.env.ZAI_API_KEY;
-  if (zaiKey) {
-    const result = await tryZai(zaiKey, textSample);
-    if (result) return { ...result, extractionMethod: 'zai' };
-  }
-
-  console.error('All AI keys failed — falling back to basic extraction');
-  return null;
+export async function tryZaiOnly(plainText: string): Promise<Omit<GeminiExtractedData, 'extractionMethod'> | null> {
+  const apiKey = process.env.ZAI_API_KEY;
+  if (!apiKey) return null;
+  return tryZai(apiKey, plainText.slice(0, 3000));
 }
 
 async function tryGemini(apiKey: string, textSample: string): Promise<Omit<GeminiExtractedData, 'extractionMethod'> | null> {

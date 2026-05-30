@@ -2,9 +2,8 @@ import { ResearchPaperStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import {
   extractStructuredDataFromDocx,
-  extractDocumentHtmlFromBuffer,
 } from './docx-extractor';
-import { extractWithGemini } from './gemini-extractor';
+import { tryGeminiOnly, tryZaiOnly } from './gemini-extractor';
 import {
   removeStoredResearchPaperFile,
   validateResearchPaperFile,
@@ -31,35 +30,56 @@ const includeDraftRelations = {
   },
 };
 
-export async function createResearchPaperDraftFromUpload(file: File, createdBy: string, issueId?: string | null) {
+export type ExtractionStep = 'gemini' | 'zai' | 'basic';
+
+export async function createResearchPaperDraftFromUpload(
+  file: File,
+  createdBy: string,
+  issueId: string | null | undefined,
+  onStep: (step: ExtractionStep) => void,
+) {
   const fileBuffer = Buffer.from(await file.arrayBuffer());
   const extension = validateResearchPaperFile(file);
-
-  // Run both extractions in parallel
-  const [structured, htmlResult] = await Promise.all([
-    extractStructuredDataFromDocx(fileBuffer, extension),
-    extractDocumentHtmlFromBuffer(fileBuffer, extension),
-  ]);
-
-  // Try Gemini for metadata — fallback to regex if Gemini fails
-  const gemini = await extractWithGemini(structured.rawHtml
+  const structured = await extractStructuredDataFromDocx(fileBuffer, extension);
+  const plainText = structured.rawHtml
     ? structured.rawHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-    : '');
+    : '';
 
-  const title = gemini?.title || structured.title;
-  const abstract = gemini?.abstract || structured.abstract;
-  const keywords = gemini?.keywords.length ? gemini.keywords : structured.keywords;
-  const affiliation = gemini?.affiliation || structured.affiliation;
-  const authors = gemini?.authors.length
-    ? gemini.authors.map((a) => ({
+  type AiResult = Awaited<ReturnType<typeof tryGeminiOnly>>;
+  let aiResult: AiResult = null;
+  let usedStep: ExtractionStep = 'basic';
+
+  // Step 1: Try Gemini
+  onStep('gemini');
+  aiResult = await tryGeminiOnly(plainText);
+
+  // Step 2: Try ZAI if Gemini failed
+  if (!aiResult) {
+    onStep('zai');
+    aiResult = await tryZaiOnly(plainText);
+  }
+
+  // Step 3: Basic if both failed
+  if (!aiResult) {
+    onStep('basic');
+    usedStep = 'basic';
+  } else {
+    usedStep = aiResult ? 'gemini' : 'zai';
+  }
+
+  const title = aiResult?.title || structured.title;
+  const abstract = aiResult?.abstract || structured.abstract;
+  const keywords = aiResult?.keywords?.length ? aiResult.keywords : structured.keywords;
+  const affiliation = aiResult?.affiliation || structured.affiliation;
+  const authors = aiResult?.authors?.length
+    ? aiResult.authors.map((a) => ({
         name: a.name,
-        email: gemini.email || undefined,
+        email: aiResult?.email || undefined,
         affiliation: affiliation || undefined,
         isCorresponding: a.isCorresponding,
       }))
     : structured.authors;
 
-  const extractionMethod = gemini?.extractionMethod || 'basic';
   const storedFile = await storeResearchPaperFile(file, fileBuffer);
 
   try {
@@ -101,7 +121,7 @@ export async function createResearchPaperDraftFromUpload(file: File, createdBy: 
       include: includeDraftRelations,
     });
 
-    return { draft, extractionMethod };
+    return { draft, extractionMethod: usedStep };
   } catch (error) {
     await removeStoredResearchPaperFile(storedFile.fileUrl);
     throw error;

@@ -156,36 +156,57 @@ export default function NewResearchPaperPage() {
 
   const analyze = async () => {
     if (!file) return;
+
+    setIsProcessing(true);
+    setError('');
+    setExtractionMethod(null);
+    setExtractionStatus('idle');
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (issueId) formData.append('issueId', issueId);
+
     try {
-      setIsProcessing(true);
-      setError('');
-      setMessage('');
-      setExtractionStatus('gemini');
-      setExtractionMethod(null);
-
-      const formData = new FormData();
-      formData.append('file', file);
-      if (issueId) formData.append('issueId', issueId);
-
       const response = await fetch('/api/admin/research-papers/upload', {
         method: 'POST',
         body: formData,
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to read file');
 
-      const method = data.extractionMethod as 'gemini' | 'zai' | 'basic';
-      setExtractionMethod(method);
-      setExtractionStatus('done');
-      setDraftId(data.draft.id);
-      applyBackendDraft(data.draft);
-      setMessage(
-        method === 'gemini'
-          ? 'Extracted successfully with Gemini AI.'
-          : method === 'zai'
-          ? 'Extracted successfully with ZAI AI.'
-          : 'Extracted using basic mode — please verify the data carefully.',
-      );
+      if (!response.ok || !response.body) {
+        throw new Error('Failed to connect to server');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          const eventLine = part.match(/^event: (.+)$/m)?.[1];
+          const dataLine = part.match(/^data: (.+)$/m)?.[1];
+          if (!eventLine || !dataLine) continue;
+
+          const data = JSON.parse(dataLine);
+
+          if (eventLine === 'status') {
+            setExtractionStatus(data.step);
+          } else if (eventLine === 'done') {
+            setExtractionMethod(data.extractionMethod);
+            setExtractionStatus('done');
+            setDraftId(data.draft.id);
+            applyBackendDraft(data.draft);
+          } else if (eventLine === 'error') {
+            throw new Error(data.error || 'Extraction failed');
+          }
+        }
+      }
     } catch (err) {
       setExtractionStatus('idle');
       setError(err instanceof Error ? err.message : 'Failed to read file');
@@ -501,17 +522,33 @@ export default function NewResearchPaperPage() {
                 </Button>
               </div>
 
-              {/* Extraction status loader */}
+              {/* Extraction status — dynamic steps */}
               {isProcessing && (
-                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2 text-sm">
+                  <div className={`flex items-center gap-2 ${extractionStatus === 'gemini' ? 'text-slate-700' : 'text-slate-400'}`}>
+                    {extractionStatus === 'gemini'
+                      ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+                      : <span className="h-3 w-3 rounded-full bg-red-300" />}
                     Extracting with Gemini AI...
                   </div>
+                  {(extractionStatus === 'zai' || extractionStatus === 'basic') && (
+                    <div className={`flex items-center gap-2 ${extractionStatus === 'zai' ? 'text-slate-700' : 'text-slate-400'}`}>
+                      {extractionStatus === 'zai'
+                        ? <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+                        : <span className="h-3 w-3 rounded-full bg-red-300" />}
+                      Trying ZAI AI...
+                    </div>
+                  )}
+                  {extractionStatus === 'basic' && (
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+                      Using basic extraction...
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Extraction result badge */}
+              {/* Result badge */}
               {!isProcessing && extractionMethod && (
                 <div className={`mt-3 rounded-lg border p-3 text-sm ${
                   extractionMethod === 'gemini' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' :
