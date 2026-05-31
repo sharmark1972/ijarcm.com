@@ -163,16 +163,20 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
 
       </div><!-- end pdf-first-page-section -->
 
-      <!-- Body sections: 2 column -->
+      <!-- Body sections: 2 column — content flows freely -->
       <main class="pdf-content">
         ${draft.sections.map((section: any) => {
           const isReferences = /^(references|bibliography|works cited)/i.test(section.heading.trim());
-          const forceFullWidth = section.isFullWidth || isReferences;
-          return `
-          <section class="pdf-content-section${isReferences ? ' pdf-references-section' : ''}" style="${forceFullWidth ? 'column-span: all;' : ''}">
-            <h3>${escapeHtml(section.heading)}</h3>
-            ${section.content || ''}
-          </section>`;
+          const isFullWidth = section.isFullWidth || isReferences;
+          return isFullWidth
+            ? `<div class="pdf-section-full${isReferences ? ' pdf-references-section' : ''}">
+                <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
+                ${section.content || ''}
+               </div>`
+            : `<div class="pdf-section-two-col">
+                <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
+                ${section.content || ''}
+               </div>`;
         }).join('')}
       </main>
 

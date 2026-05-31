@@ -297,17 +297,32 @@
   border-top: 1px solid #315985;
   margin-top: 26px;
   padding-top: 16px;
-  column-count: 2;
-  column-gap: 18px;
 }
 
-.pdf-content-section {
-  margin-top: 14px;
-  break-inside: avoid-column;
+/* Full width section — outside columns */
+.pdf-section-full {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* 2-column section — uses CSS columns */
+.pdf-section-two-col {
+  column-count: 2;
+  column-gap: 18px;
+  margin-bottom: 10px;
+}
+
+.pdf-section-heading {
+  margin: 0 0 6px;
+  color: #315985;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+  break-after: avoid;
+  column-span: all;
 }
 
 .pdf-references-section {
-  column-span: all;
   border-top: 1px solid #cbd5e1;
   margin-top: 20px;
   padding-top: 12px;
@@ -325,10 +340,14 @@
   line-height: 1.5;
 }
 
-.pdf-content-section h3,
-.pdf-content-section h1,
-.pdf-content-section h2,
-.pdf-content-section h4 {
+.pdf-section-full h3,
+.pdf-section-full h1,
+.pdf-section-full h2,
+.pdf-section-full h4,
+.pdf-section-two-col h3,
+.pdf-section-two-col h1,
+.pdf-section-two-col h2,
+.pdf-section-two-col h4 {
   margin: 0 0 6px;
   color: #315985;
   font-size: 13px;
@@ -336,8 +355,10 @@
   line-height: 1.3;
 }
 
-.pdf-content-section ul,
-.pdf-content-section ol {
+.pdf-section-full ul,
+.pdf-section-full ol,
+.pdf-section-two-col ul,
+.pdf-section-two-col ol {
   margin: 0 0 8px;
   padding-left: 18px;
   color: #000000;
@@ -345,22 +366,27 @@
   line-height: 1.5;
 }
 
-.pdf-content-section li {
+.pdf-section-full li,
+.pdf-section-two-col li {
   margin-bottom: 4px;
 }
 
-.pdf-content-section strong,
-.pdf-content-section b {
+.pdf-section-full strong,
+.pdf-section-full b,
+.pdf-section-two-col strong,
+.pdf-section-two-col b {
   font-weight: 700;
 }
 
-.pdf-content-section em,
-.pdf-content-section i {
+.pdf-section-full em,
+.pdf-section-full i,
+.pdf-section-two-col em,
+.pdf-section-two-col i {
   font-style: italic;
 }
 
-.pdf-content-section table {
-  column-span: all;
+.pdf-section-full table,
+.pdf-section-two-col table {
   width: 100%;
   border-collapse: collapse;
   margin: 14px 0;
@@ -394,6 +420,9 @@
   height: auto;
   display: block;
   margin: 14px auto;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  break-before: avoid;
 }
 
 .pdf-running-header {

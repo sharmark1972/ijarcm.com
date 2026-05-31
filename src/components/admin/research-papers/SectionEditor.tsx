@@ -16,17 +16,16 @@ interface SectionEditorProps {
 
 export function SectionEditor({ content, onChange, size = 'large' }: SectionEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         bulletList: { HTMLAttributes: { class: 'section-editor-ul' } },
         orderedList: { HTMLAttributes: { class: 'section-editor-ol' } },
         heading: { levels: [2, 3] },
-        bold: {
-          HTMLAttributes: { class: 'bold' },
-        },
-        italic: {
-          HTMLAttributes: { class: 'italic' },
-        },
+        bold: { HTMLAttributes: { class: 'bold' } },
+        italic: { HTMLAttributes: { class: 'italic' } },
+        // Disable StarterKit's underline to avoid duplicate
+        strike: false,
       }),
       Underline.configure({
         HTMLAttributes: { class: 'underline' },

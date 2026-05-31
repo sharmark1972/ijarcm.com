@@ -808,84 +808,96 @@ export default function NewResearchPaperPage() {
 
                 {/* Right: Continuous scroll — all sections */}
                 <div className="divide-y divide-slate-100 overflow-y-auto" style={{ maxHeight: '85vh' }}>
-                  {draft.sections.map((section, index) => (
-                    <div
-                      key={section.id}
-                      ref={(el) => { sectionRefs.current[section.id] = el; }}
-                      className="p-6"
-                      onClick={() => setActiveSectionId(section.id)}
-                    >
-                      {/* Section header */}
-                      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Section {index + 1}</p>
-                          <h3 className="mt-1 text-lg font-semibold text-slate-900">
-                            {section.heading.replace(/^\d+(\.\d+)*\.?\s*/, '') || 'Untitled'}
-                          </h3>
+                  {draft.sections.map((section, index) => {
+                    const isActive = activeSectionId === section.id;
+                    return (
+                      <div
+                        key={section.id}
+                        ref={(el) => { sectionRefs.current[section.id] = el; }}
+                        className={`p-6 cursor-pointer transition-colors ${isActive ? 'bg-white' : 'bg-slate-50 hover:bg-white'}`}
+                        onClick={() => setActiveSectionId(section.id)}
+                      >
+                        {/* Section header */}
+                        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Section {index + 1}</p>
+                            <h3 className="mt-1 text-base font-semibold text-slate-900">
+                              {section.heading.replace(/^\d+(\.\d+)*\.?\s*/, '') || 'Untitled'}
+                            </h3>
+                          </div>
+                          {isActive && (
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={section.isFullWidth ? 'full' : '2col'}
+                                onValueChange={(value) =>
+                                  setDraft((prev) => ({
+                                    ...prev,
+                                    sections: prev.sections.map((s) =>
+                                      s.id === section.id ? { ...s, isFullWidth: value === 'full' } : s
+                                    ),
+                                  }))
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-36 text-xs bg-white" onClick={(e) => e.stopPropagation()}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="full">1-column</SelectItem>
+                                  <SelectItem value="2col">2-column</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
+                                onClick={(e) => { e.stopPropagation(); setTimeout(removeActiveSection, 0); }}
+                                disabled={draft.sections.length <= 1}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Select
-                            value={section.isFullWidth ? 'full' : '2col'}
-                            onValueChange={(value) =>
-                              setDraft((prev) => ({
-                                ...prev,
-                                sections: prev.sections.map((s) =>
-                                  s.id === section.id ? { ...s, isFullWidth: value === 'full' } : s
-                                ),
-                              }))
-                            }
-                          >
-                            <SelectTrigger className="h-8 w-36 text-xs bg-white">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="full">1-column</SelectItem>
-                              <SelectItem value="2col">2-column</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
-                            onClick={(e) => { e.stopPropagation(); setActiveSectionId(section.id); setTimeout(removeActiveSection, 0); }}
-                            disabled={draft.sections.length <= 1}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
 
-                      {/* Heading input */}
-                      <div className="mb-3">
-                        <Input
-                          value={section.heading}
-                          placeholder="Section heading"
-                          className="bg-white text-sm"
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) =>
-                            setDraft((prev) => ({
-                              ...prev,
-                              sections: prev.sections.map((s) =>
-                                s.id === section.id ? { ...s, heading: e.target.value } : s
-                              ),
-                            }))
-                          }
-                        />
+                        {/* Active: show editor | Inactive: show preview */}
+                        {isActive ? (
+                          <>
+                            <div className="mb-3">
+                              <Input
+                                value={section.heading}
+                                placeholder="Section heading"
+                                className="bg-white text-sm"
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) =>
+                                  setDraft((prev) => ({
+                                    ...prev,
+                                    sections: prev.sections.map((s) =>
+                                      s.id === section.id ? { ...s, heading: e.target.value } : s
+                                    ),
+                                  }))
+                                }
+                              />
+                            </div>
+                            <SectionEditor
+                              content={section.cleaned}
+                              onChange={(html) =>
+                                setDraft((prev) => ({
+                                  ...prev,
+                                  sections: prev.sections.map((s) =>
+                                    s.id === section.id
+                                      ? { ...s, cleaned: html, status: html.trim() ? 'complete' : 'missing' }
+                                      : s
+                                  ),
+                                }))
+                              }
+                            />
+                          </>
+                        ) : (
+                          <div
+                            className="prose prose-sm max-w-none text-slate-600 line-clamp-3 text-xs"
+                            dangerouslySetInnerHTML={{ __html: section.cleaned || '<p class="text-slate-400 italic">Empty section — click to edit</p>' }}
+                          />
+                        )}
                       </div>
-
-                      {/* TipTap editor */}
-                      <SectionEditor
-                        content={section.cleaned}
-                        onChange={(html) =>
-                          setDraft((prev) => ({
-                            ...prev,
-                            sections: prev.sections.map((s) =>
-                              s.id === section.id
-                                ? { ...s, cleaned: html, status: html.trim() ? 'complete' : 'missing' }
-                                : s
-                            ),
-                          }))
-                        }
-                      />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </section>

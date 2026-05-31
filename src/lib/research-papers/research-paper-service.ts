@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import {
   extractStructuredDataFromDocx,
 } from './docx-extractor';
-import { tryGeminiOnly, tryZaiOnly } from './gemini-extractor';
+import { tryGeminiOnly, tryZaiOnly, getLayoutDecisions } from './gemini-extractor';
 import {
   removeStoredResearchPaperFile,
   validateResearchPaperFile,
@@ -107,15 +107,7 @@ export async function createResearchPaperDraftFromUpload(
           })),
         },
         sections: {
-          create: structured.sections.map((section, index) => ({
-            heading: section.heading ? section.heading.trim() : 'Untitled Section',
-            content: section.content ? section.content.trim() : '',
-            sectionOrder: index,
-            isFullWidth: analyzeSectionLayout(
-              section.heading ? section.heading.trim() : 'Untitled Section',
-              section.content ? section.content.trim() : ''
-            ),
-          })),
+          create: await buildSectionsWithLayout(structured.sections),
         },
       },
       include: includeDraftRelations,
@@ -355,4 +347,37 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+async function buildSectionsWithLayout(
+  sections: Array<{ heading: string; content: string }>
+) {
+  // Try AI layout decisions first
+  const aiLayouts = await getLayoutDecisions(sections);
+
+  return sections.map((section, index) => {
+    const heading = section.heading ? section.heading.trim() : 'Untitled Section';
+    const content = section.content ? section.content.trim() : '';
+
+    let isFullWidth: boolean;
+
+    if (aiLayouts) {
+      // Match AI decision by heading
+      const aiDecision = aiLayouts.find(
+        (l) => l.heading.toLowerCase().trim() === heading.toLowerCase().trim()
+      ) || aiLayouts[index];
+
+      isFullWidth = aiDecision ? aiDecision.layout === 'full-width' : analyzeSectionLayout(heading, content);
+    } else {
+      // Fallback to rule-based
+      isFullWidth = analyzeSectionLayout(heading, content);
+    }
+
+    return {
+      heading,
+      content,
+      sectionOrder: index,
+      isFullWidth,
+    };
+  });
 }

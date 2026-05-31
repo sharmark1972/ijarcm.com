@@ -24,32 +24,18 @@ export function analyzeSectionLayout(
   heading: string,
   htmlContent: string
 ): boolean {
-  // Rule 1: Check if heading matches full-width list
+  // Rule 1: Known full-width headings
   if (FULL_WIDTH_HEADINGS.some((fw) => heading.toLowerCase().includes(fw.toLowerCase()))) {
     return true;
   }
 
-  // Rule 2: Content longer than 2000 characters → full width
-  if (htmlContent.length > 2000) {
-    return true;
-  }
-
-  // Rule 3: Has images → full width
+  // Rule 2: Has images → full width
   if (/<img/i.test(htmlContent)) {
     return true;
   }
 
-  // Rule 4: Has wide table (4+ columns) → full width
+  // Rule 3: Has any table → full width
   if (/<table/i.test(htmlContent)) {
-    const tableHtml = extractTableHtml(htmlContent);
-    if (tableHtml && isWideTable(tableHtml)) {
-      return true;
-    }
-  }
-
-  // Rule 5: Has multiple tables → full width
-  const tableCount = (htmlContent.match(/<table/gi) || []).length;
-  if (tableCount > 1) {
     return true;
   }
 
