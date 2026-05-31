@@ -24,6 +24,7 @@ import {
   Shield,
   AlertTriangle,
   BookOpen,
+  Upload,
   X
 } from 'lucide-react';
 
@@ -415,6 +416,13 @@ export default function AdminPapersPage() {
                 >
                   <FileText className="h-4 w-4 mr-2" />
                   Add Paper
+                </Link>
+                <Link
+                  href="/admin/research-papers/new"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload DOCX
                 </Link>
                 <Link
                   href="/admin/issues"

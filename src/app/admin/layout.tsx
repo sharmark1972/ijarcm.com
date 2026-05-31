@@ -102,7 +102,7 @@ export default function AdminLayout({
     {
       name: 'Research Papers',
       href: '/admin/research-papers',
-      icon: Sparkles,
+      icon: FileText,
       current: false,
     },
     {

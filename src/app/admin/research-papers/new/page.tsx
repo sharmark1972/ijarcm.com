@@ -98,6 +98,9 @@ export default function NewResearchPaperPage() {
   const [error, setError] = useState('');
   const [extractionStatus, setExtractionStatus] = useState<'idle' | 'gemini' | 'zai' | 'basic' | 'done'>('idle');
   const [extractionMethod, setExtractionMethod] = useState<'gemini' | 'zai' | 'basic' | null>(null);
+  const [extractionMode, setExtractionMode] = useState<'auto' | 'gemini' | 'zai' | 'basic'>('auto');
+  const [paperStatus, setPaperStatus] = useState<string>('PUBLISHED');
+  const [paperType, setPaperType] = useState<string>('');
 
   if (!isAdmin()) {
     redirect('/dashboard');
@@ -165,6 +168,7 @@ export default function NewResearchPaperPage() {
     const formData = new FormData();
     formData.append('file', file);
     if (issueId) formData.append('issueId', issueId);
+    formData.append('extractionMode', extractionMode);
 
     try {
       const response = await fetch('/api/admin/research-papers/upload', {
@@ -375,6 +379,78 @@ export default function NewResearchPaperPage() {
     }
   };
 
+  const createPaper = async () => {
+    if (!draft.title) {
+      setError('Title is required before creating paper.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setError('');
+      setMessage('');
+
+      // Build authors array for old papers API format
+      const authors = draft.authors
+        .filter((a) => a.name.trim())
+        .map((a) => ({
+          firstName: a.name.trim().split(' ')[0] || a.name.trim(),
+          lastName: a.name.trim().split(' ').slice(1).join(' ') || '',
+          email: a.email?.trim() || undefined,
+          isCorresponding: a.corresponding,
+        }));
+
+      // Map sections to old paperContent fields by heading keyword
+      const findSection = (keywords: string[]) =>
+        draft.sections
+          .filter((s) => keywords.some((k) => s.heading.toLowerCase().includes(k)))
+          .map((s) => s.cleaned)
+          .join('\n\n') || undefined;
+
+      const introduction = findSection(['introduction']);
+      const literatureReview = findSection(['literature', 'review', 'hypothesis']);
+      const methodology = findSection(['method', 'methodology', 'material']);
+      const results = findSection(['result', 'finding']);
+      const discussion = findSection(['discussion']);
+      const conclusion = findSection(['conclusion']);
+      const references = findSection(['reference', 'bibliography']);
+
+      const submitData = new FormData();
+      submitData.append('title', draft.title);
+      submitData.append('abstract', draft.abstract || '');
+      submitData.append('keywords', draft.keywords.filter(Boolean).join(', '));
+      submitData.append('authors', JSON.stringify(authors));
+      submitData.append('category', draft.category || 'Research');
+      submitData.append('status', paperStatus);
+      if (paperType) submitData.append('paperType', paperType);
+      submitData.append('generatePDF', 'true');
+      if (issueId) submitData.append('issueId', issueId);
+      if (draft.doi) submitData.append('doi', draft.doi);
+      if (introduction) submitData.append('introduction', introduction);
+      if (literatureReview) submitData.append('literatureReview', literatureReview);
+      if (methodology) submitData.append('methodology', methodology);
+      if (results) submitData.append('results', results);
+      if (discussion) submitData.append('discussion', discussion);
+      if (conclusion) submitData.append('conclusion', conclusion);
+      if (references) submitData.append('references', references);
+
+      const response = await fetch('/api/admin/papers', {
+        method: 'POST',
+        body: submitData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to create paper');
+
+      setMessage('Paper created successfully!');
+      router.push('/admin/papers');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create paper');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const saveDraft = async () => {
     if (!draftId) {
       setError('Upload and read a DOCX file before saving.');
@@ -459,7 +535,7 @@ export default function NewResearchPaperPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <Button asChild variant="ghost" className="mb-2 px-0 text-slate-500 hover:bg-transparent hover:text-slate-900">
-                <Link href="/admin/research-papers">
+                <Link href="/admin/papers">
                   <ArrowLeft className="h-4 w-4" />
                   Back
                 </Link>
@@ -512,14 +588,32 @@ export default function NewResearchPaperPage() {
                 />
               </label>
 
-              <div className="mt-4 flex gap-2">
-                <Button className="flex-1 bg-slate-900 hover:bg-slate-800" onClick={analyze} disabled={!file || isProcessing}>
-                  <FileText className="h-4 w-4" />
-                  {isProcessing ? 'Reading file...' : 'Read file'}
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/admin/research-papers/pdf-template">Template</Link>
-                </Button>
+              <div className="mt-4 space-y-3">
+                <div className="flex gap-1">
+                  {(['auto', 'gemini', 'zai', 'basic'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setExtractionMode(mode)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                        extractionMode === mode
+                          ? 'border-slate-900 bg-slate-900 text-white'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                      }`}
+                    >
+                      {mode === 'auto' ? 'Auto' : mode === 'basic' ? 'No AI' : mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button className="flex-1 bg-slate-900 hover:bg-slate-800" onClick={analyze} disabled={!file || isProcessing}>
+                    <FileText className="h-4 w-4" />
+                    {isProcessing ? 'Reading file...' : 'Read file'}
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/admin/research-papers/pdf-template">Template</Link>
+                  </Button>
+                </div>
               </div>
 
               {/* Extraction status — dynamic steps */}
@@ -622,6 +716,35 @@ export default function NewResearchPaperPage() {
                   </Select>
                 </div>
                 <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
+                  <Select value={paperStatus} onValueChange={setPaperStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SUBMITTED">Submitted</SelectItem>
+                      <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
+                      <SelectItem value="REVISION_REQUIRED">Revision Required</SelectItem>
+                      <SelectItem value="ACCEPTED">Accepted</SelectItem>
+                      <SelectItem value="PUBLISHED">Published</SelectItem>
+                      <SelectItem value="REJECTED">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Paper Type</label>
+                  <Select value={paperType || 'none'} onValueChange={(value) => setPaperType(value === 'none' ? '' : value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      <SelectItem value="REVIEW">Review Paper</SelectItem>
+                      <SelectItem value="IMPLEMENTATION">Implementation Paper</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">DOI</label>
                   <Input
                     value={draft.doi || ''}
@@ -690,6 +813,21 @@ export default function NewResearchPaperPage() {
                           })
                         }
                       />
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={author.corresponding || false}
+                          onChange={(event) =>
+                            setDraft((prev) => {
+                              const authors = [...prev.authors];
+                              authors[index] = { ...authors[index], corresponding: event.target.checked };
+                              return { ...prev, authors };
+                            })
+                          }
+                          className="rounded border-gray-300 text-blue-600"
+                        />
+                        <span className="text-xs text-slate-600">Corresponding author</span>
+                      </label>
                     </div>
                   ))
                 )}
@@ -708,9 +846,9 @@ export default function NewResearchPaperPage() {
                   <Eye className="h-4 w-4" />
                   Preview PDF
                 </Button>
-                <Button className="bg-slate-900 hover:bg-slate-800" disabled={!draft.title || isSaving} onClick={saveDraft}>
+                <Button className="bg-green-700 hover:bg-green-800" disabled={!draft.title || isSaving} onClick={createPaper}>
                   <Save className="h-4 w-4" />
-                  {isSaving ? 'Saving...' : 'Save Draft'}
+                  {isSaving ? 'Creating...' : 'Create Paper'}
                 </Button>
               </div>
             </section>

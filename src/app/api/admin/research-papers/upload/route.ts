@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { createResearchPaperDraftFromUpload } from '@/lib/research-papers/research-paper-service';
+import { createResearchPaperDraftFromUpload, ExtractionMode } from '@/lib/research-papers/research-paper-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const file = formData.get('file');
   const issueId = formData.get('issueId');
+  const extractionMode = (formData.get('extractionMode') as ExtractionMode) || 'auto';
 
   if (!(file instanceof File)) {
     return new Response(JSON.stringify({ error: 'File is required' }), { status: 400 });
@@ -42,6 +43,7 @@ export async function POST(request: NextRequest) {
             };
             send('status', { step, message: messages[step] });
           },
+          extractionMode,
         );
 
         send('done', { draft, extractionMethod });

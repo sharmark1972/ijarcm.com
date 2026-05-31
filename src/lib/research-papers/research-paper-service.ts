@@ -32,11 +32,14 @@ const includeDraftRelations = {
 
 export type ExtractionStep = 'gemini' | 'zai' | 'basic';
 
+export type ExtractionMode = 'auto' | 'gemini' | 'zai' | 'basic';
+
 export async function createResearchPaperDraftFromUpload(
   file: File,
   createdBy: string,
   issueId: string | null | undefined,
   onStep: (step: ExtractionStep) => void,
+  extractionMode: ExtractionMode = 'auto',
 ) {
   const fileBuffer = Buffer.from(await file.arrayBuffer());
   const extension = validateResearchPaperFile(file);
@@ -49,22 +52,38 @@ export async function createResearchPaperDraftFromUpload(
   let aiResult: AiResult = null;
   let usedStep: ExtractionStep = 'basic';
 
-  // Step 1: Try Gemini
-  onStep('gemini');
-  aiResult = await tryGeminiOnly(plainText);
-
-  // Step 2: Try ZAI if Gemini failed
-  if (!aiResult) {
-    onStep('zai');
-    aiResult = await tryZaiOnly(plainText);
-  }
-
-  // Step 3: Basic if both failed
-  if (!aiResult) {
+  if (extractionMode === 'basic') {
+    // Without AI — sirf basic extraction
     onStep('basic');
     usedStep = 'basic';
+  } else if (extractionMode === 'gemini') {
+    // Sirf Gemini
+    onStep('gemini');
+    aiResult = await tryGeminiOnly(plainText);
+    usedStep = aiResult ? 'gemini' : 'basic';
+    if (!aiResult) onStep('basic');
+  } else if (extractionMode === 'zai') {
+    // Sirf ZAI
+    onStep('zai');
+    aiResult = await tryZaiOnly(plainText);
+    usedStep = aiResult ? 'zai' : 'basic';
+    if (!aiResult) onStep('basic');
   } else {
-    usedStep = aiResult ? 'gemini' : 'zai';
+    // Auto — Gemini → ZAI → basic
+    onStep('gemini');
+    aiResult = await tryGeminiOnly(plainText);
+
+    if (!aiResult) {
+      onStep('zai');
+      aiResult = await tryZaiOnly(plainText);
+    }
+
+    if (!aiResult) {
+      onStep('basic');
+      usedStep = 'basic';
+    } else {
+      usedStep = aiResult ? 'gemini' : 'zai';
+    }
   }
 
   const title = aiResult?.title || structured.title;

@@ -348,11 +348,11 @@
 .pdf-section-two-col h1,
 .pdf-section-two-col h2,
 .pdf-section-two-col h4 {
-  margin: 0 0 6px;
-  color: #315985;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.3;
+  margin: 0 0 6px !important;
+  color: #315985 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
 }
 
 .pdf-section-full ul,
