@@ -137,7 +137,7 @@ export default function NewResearchPaperPage() {
         const response = await fetch(`/api/admin/research-papers/${draftId}`);
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Failed to load draft');
-        applyBackendDraft(data.draft);
+        applyExtractedData(data.draft);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load draft');
       }
@@ -204,8 +204,7 @@ export default function NewResearchPaperPage() {
           } else if (eventLine === 'done') {
             setExtractionMethod(data.extractionMethod);
             setExtractionStatus('done');
-            setDraftId(data.draft.id);
-            applyBackendDraft(data.draft);
+            applyExtractedData(data.extractedData);
           } else if (eventLine === 'error') {
             throw new Error(data.error || 'Extraction failed');
           }
@@ -219,10 +218,18 @@ export default function NewResearchPaperPage() {
     }
   };
 
-  const applyBackendDraft = (backendDraft: BackendDraft) => {
-    const mappedSections = backendDraft.sections.length > 0
-      ? backendDraft.sections.map((section) => ({
-          id: section.id,
+  const applyExtractedData = (extractedData: {
+    title: string;
+    abstract: string;
+    keywords: string[];
+    authors: Array<{ name: string; email: string; affiliation: string; isCorresponding: boolean; authorOrder: number }>;
+    sections: Array<{ heading: string; content: string; isFullWidth: boolean }>;
+    sourceFileName: string;
+    sourceFileSize: number;
+  }) => {
+    const mappedSections = extractedData.sections.length > 0
+      ? extractedData.sections.map((section, index) => ({
+          id: `section-${index}`,
           heading: section.heading,
           original: section.content,
           cleaned: section.content,
@@ -233,28 +240,27 @@ export default function NewResearchPaperPage() {
       : blankDraft().sections;
 
     setDraft({
-      jobId: backendDraft.id,
-      fileName: backendDraft.sourceFileName || '',
-      fileSize: backendDraft.sourceFileSize || 0,
-      title: backendDraft.title || '',
-      abstract: backendDraft.abstract || '',
-      keywords: Array.isArray(backendDraft.keywords) ? backendDraft.keywords : [],
-      authors: backendDraft.authors.map((author) => ({
+      jobId: '',
+      fileName: extractedData.sourceFileName || '',
+      fileSize: extractedData.sourceFileSize || 0,
+      title: extractedData.title || '',
+      abstract: extractedData.abstract || '',
+      keywords: extractedData.keywords || [],
+      authors: extractedData.authors.map((author) => ({
         name: author.name,
         email: author.email || '',
         affiliation: author.affiliation || '',
         corresponding: author.isCorresponding,
       })),
-      doi: backendDraft.doi || '',
-      issueId: backendDraft.issueId || '',
+      doi: '',
+      issueId: '',
       category: '',
       detectedMode: 'implementation',
       confidence: 0,
       similarityScore: 0,
       sections: mappedSections,
     });
-    setIssueId(backendDraft.issueId || '');
-    setActiveSectionId(mappedSections[0]?.id || 'abstract');
+    setActiveSectionId(mappedSections[0]?.id || 'section-0');
   };
 
   const scrollToSection = (id: string) => {
@@ -864,26 +870,6 @@ export default function NewResearchPaperPage() {
                     placeholder="Extracted paper title"
                     onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
                   />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">Paper type</label>
-                  <Select
-                    value={draft.detectedMode}
-                    onValueChange={(value) =>
-                      setDraft((prev) => ({
-                        ...prev,
-                        detectedMode: value as ResearchPaperDraft['detectedMode'],
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="review">Review Paper</SelectItem>
-                      <SelectItem value="implementation">Implementation Paper</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>

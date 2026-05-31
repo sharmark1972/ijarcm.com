@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, Edit, Trash2, Users, Award, Mail, FileText, Upload, User } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Award, Mail, FileText, Upload, User, EyeOff, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -345,10 +345,11 @@ function MemberForm({
   );
 }
 
-function MemberCard({ member, onEdit, onDelete }: { 
-  member: EditorialBoardMember; 
-  onEdit: (member: EditorialBoardMember) => void; 
-  onDelete: (id: string) => void; 
+function MemberCard({ member, onEdit, onDelete, onToggleVisibility }: {
+  member: EditorialBoardMember;
+  onEdit: (member: EditorialBoardMember) => void;
+  onDelete: (id: string) => void;
+  onToggleVisibility: (id: string, isActive: boolean) => void;
 }) {
   const getPositionColor = (position: string) => {
     switch (position) {
@@ -458,6 +459,15 @@ function MemberCard({ member, onEdit, onDelete }: {
             <Button
               size="sm"
               variant="outline"
+              onClick={() => onToggleVisibility(member.id, member.isActive)}
+              className={member.isActive ? 'text-orange-600 border-orange-300 hover:bg-orange-50' : 'text-green-600 border-green-300 hover:bg-green-50'}
+            >
+              {member.isActive ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+              {member.isActive ? 'Hide' : 'Show'}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
               onClick={() => onEdit(member)}
             >
               <Edit className="w-4 h-4 mr-1" />
@@ -537,6 +547,7 @@ export default function AdminEditorialBoardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [editingMember, setEditingMember] = useState<EditorialBoardMember | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<'active' | 'hidden'>('active');
 
   useEffect(() => {
     fetchMembers();
@@ -630,6 +641,23 @@ export default function AdminEditorialBoardPage() {
       toast.error('Failed to update editorial board member');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleToggleVisibility = async (id: string, currentIsActive: boolean) => {
+    try {
+      const response = await fetch('/api/editorial-board?id=' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !currentIsActive }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update visibility');
+
+      toast.success(currentIsActive ? 'Member hidden from website' : 'Member visible on website');
+      fetchMembers();
+    } catch {
+      toast.error('Failed to update member visibility');
     }
   };
 
@@ -746,6 +774,30 @@ export default function AdminEditorialBoardPage() {
         </div>
       )}
 
+      {/* Filter Tabs */}
+      <div className="flex gap-2 border-b border-gray-200">
+        <button
+          onClick={() => setActiveTab('active')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'active'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Active ({members.filter(m => m.isActive).length})
+        </button>
+        <button
+          onClick={() => setActiveTab('hidden')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'hidden'
+              ? 'border-orange-500 text-orange-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Hidden ({members.filter(m => !m.isActive).length})
+        </button>
+      </div>
+
       {/* Members Grid */}
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -756,6 +808,7 @@ export default function AdminEditorialBoardPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {members
+            .filter(m => activeTab === 'active' ? m.isActive : !m.isActive)
             .sort((a, b) => a.displayOrder - b.displayOrder)
             .map((member) => (
               <MemberCard
@@ -763,25 +816,28 @@ export default function AdminEditorialBoardPage() {
                 member={member}
                 onEdit={setEditingMember}
                 onDelete={handleDeleteMember}
+                onToggleVisibility={handleToggleVisibility}
               />
             ))}
         </div>
       )}
 
       {/* Empty State */}
-      {!loading && members.length === 0 && (
+      {!loading && members.filter(m => activeTab === 'active' ? m.isActive : !m.isActive).length === 0 && (
         <div className="text-center py-12">
           <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No Editorial Board Members Found
+            {activeTab === 'active' ? 'No Active Members' : 'No Hidden Members'}
           </h3>
           <p className="text-gray-600 mb-4">
-            Get started by adding your first editorial board member.
+            {activeTab === 'active' ? 'Get started by adding your first editorial board member.' : 'Hidden members will appear here.'}
           </p>
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Member
-          </Button>
+          {activeTab === 'active' && (
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Member
+            </Button>
+          )}
         </div>
       )}
 

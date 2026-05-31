@@ -31,10 +31,8 @@ export async function POST(request: NextRequest) {
       };
 
       try {
-        const { draft, extractionMethod } = await createResearchPaperDraftFromUpload(
+        const { extractedData, extractionMethod } = await createResearchPaperDraftFromUpload(
           file,
-          session.user.id,
-          typeof issueId === 'string' ? issueId : null,
           (step) => {
             const messages = {
               gemini: 'Extracting with Gemini AI...',
@@ -43,10 +41,10 @@ export async function POST(request: NextRequest) {
             };
             send('status', { step, message: messages[step] });
           },
-          extractionMode,
+          extractionMode
         );
 
-        send('done', { draft, extractionMethod });
+        send('done', { extractedData, extractionMethod });
       } catch (error) {
         send('error', { error: error instanceof Error ? error.message : 'Extraction failed' });
       } finally {

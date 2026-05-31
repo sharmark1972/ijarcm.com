@@ -7,7 +7,6 @@ import { tryGeminiOnly, tryZaiOnly, getLayoutDecisions } from './gemini-extracto
 import {
   removeStoredResearchPaperFile,
   validateResearchPaperFile,
-  storeResearchPaperFile,
 } from './storage';
 import { validateDraftUpdate, validatePublishReady } from './validation';
 import type { ResearchPaperDraftUpdateInput } from './types';
@@ -36,8 +35,6 @@ export type ExtractionMode = 'auto' | 'gemini' | 'zai' | 'basic';
 
 export async function createResearchPaperDraftFromUpload(
   file: File,
-  createdBy: string,
-  issueId: string | null | undefined,
   onStep: (step: ExtractionStep) => void,
   extractionMode: ExtractionMode = 'auto',
 ) {
@@ -99,44 +96,27 @@ export async function createResearchPaperDraftFromUpload(
       }))
     : structured.authors;
 
-  const storedFile = await storeResearchPaperFile(file, fileBuffer);
+  const sanitizedKeywords = keywords.filter((k) => typeof k === 'string');
+  const sectionsWithLayout = await buildSectionsWithLayout(structured.sections);
 
-  try {
-    const sanitizedKeywords = keywords.filter((k) => typeof k === 'string');
-
-    const draft = await prisma.researchPaperDraft.create({
-      data: {
-        title: title ? title.trim() : null,
-        abstract: abstract ? abstract.trim() : null,
-        keywords: sanitizedKeywords.length > 0 ? sanitizedKeywords : [],
-        issueId: issueId || null,
-        createdBy,
-        sourceFilePath: storedFile.fileUrl,
-        sourceFileName: storedFile.originalName,
-        sourceFileSize: storedFile.size,
-        extractedText: structured.rawHtml || null,
-        status: structured.rawHtml ? ResearchPaperStatus.EXTRACTED : ResearchPaperStatus.UPLOADED,
-        authors: {
-          create: authors.map((author, index) => ({
-            name: author.name.trim(),
-            email: author.email ? author.email.trim() : null,
-            affiliation: author.affiliation ? author.affiliation.trim() : null,
-            authorOrder: index,
-            isCorresponding: Boolean(author.isCorresponding),
-          })),
-        },
-        sections: {
-          create: await buildSectionsWithLayout(structured.sections),
-        },
-      },
-      include: includeDraftRelations,
-    });
-
-    return { draft, extractionMethod: usedStep };
-  } catch (error) {
-    await removeStoredResearchPaperFile(storedFile.fileUrl);
-    throw error;
-  }
+  return {
+    extractedData: {
+      title: title ? title.trim() : '',
+      abstract: abstract ? abstract.trim() : '',
+      keywords: sanitizedKeywords,
+      authors: authors.map((author, index) => ({
+        name: author.name.trim(),
+        email: author.email ? author.email.trim() : '',
+        affiliation: author.affiliation ? author.affiliation.trim() : '',
+        isCorresponding: Boolean(author.isCorresponding),
+        authorOrder: index,
+      })),
+      sections: sectionsWithLayout,
+      sourceFileName: file.name,
+      sourceFileSize: file.size,
+    },
+    extractionMethod: usedStep,
+  };
 }
 
 
