@@ -30,16 +30,8 @@ Fields to extract:
 - authors: Array of author objects with "name" (string) and "isCorresponding" (boolean, first author is corresponding)
 - affiliation: Full institutional affiliation (department, university, location)
 - email: Corresponding author email if found, else empty string
-- abstract: Rewritten abstract, maximum 148 words (see rewriting rules below)
+- abstract: Full abstract text, maximum 148 words
 - keywords: Array of keywords
-
-Abstract rewriting rules:
-- Rewrite the abstract completely in your own words — do NOT copy sentences verbatim from the paper
-- Preserve the original meaning, research findings, methodology, and conclusions fully
-- Keep it concise: maximum 148 words, no filler phrases
-- Write in clear, formal, academic English that sounds naturally human
-- Avoid robotic, repetitive, or overly passive phrasing
-- Paraphrase naturally so the result is plagiarism-free
 
 Rules:
 - title must be clean — remove surrounding quotes if any
@@ -70,8 +62,9 @@ Analyze the sections below and decide the layout for each section in the PDF.
 
 Layout Rules:
 1. If a section contains a table or image → use "full-width"
-2. All other sections → use "two-column"
-3. References, Bibliography, Works Cited → always "full-width"
+2. If a section is plain text only → use "two-column"
+3. If total two-column sections count is odd, the last one must be "full-width" (so columns balance evenly)
+4. Abstract, References, Bibliography, Conclusion, Acknowledgements → always "full-width"
 
 Return ONLY a valid JSON array. No explanation, no markdown.
 

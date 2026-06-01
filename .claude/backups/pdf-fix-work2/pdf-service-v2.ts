@@ -161,8 +161,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
       <main class="pdf-content">
         ${data.sections.map((section) => {
           const isReferences = /^(references|bibliography|works cited)/i.test(section.heading.trim());
-          const hasTableOrImage = /<table|<img/i.test(section.content || '');
-          const isFullWidth = hasTableOrImage || isReferences;
+          const isFullWidth = section.isFullWidth || isReferences;
           return isFullWidth
             ? `<div class="pdf-section-full${isReferences ? ' pdf-references-section' : ''}">
                 <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
@@ -319,8 +318,7 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
       <main class="pdf-content">
         ${draft.sections.map((section: any) => {
           const isReferences = /^(references|bibliography|works cited)/i.test(section.heading.trim());
-          const hasTableOrImage = /<table|<img/i.test(section.content || '');
-          const isFullWidth = hasTableOrImage || isReferences;
+          const isFullWidth = section.isFullWidth || isReferences;
           return isFullWidth
             ? `<div class="pdf-section-full${isReferences ? ' pdf-references-section' : ''}">
                 <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>

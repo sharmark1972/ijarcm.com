@@ -151,7 +151,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
           </aside>
           <section class="pdf-abstract-panel">
             <h3>Abstract</h3>
-            <p>${getFirstNWords(stripHtml(data.abstract || ''), 148)}</p>
+            <p>${escapeHtml(getFirstNWords(data.abstract || '', 148))}</p>
             <div class="pdf-keywords">
               <strong>Keywords:</strong> ${escapeHtml(parseKeywords(data.keywords).join(', '))}
             </div>
@@ -161,8 +161,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
       <main class="pdf-content">
         ${data.sections.map((section) => {
           const isReferences = /^(references|bibliography|works cited)/i.test(section.heading.trim());
-          const hasTableOrImage = /<table|<img/i.test(section.content || '');
-          const isFullWidth = hasTableOrImage || isReferences;
+          const isFullWidth = section.isFullWidth || isReferences;
           return isFullWidth
             ? `<div class="pdf-section-full${isReferences ? ' pdf-references-section' : ''}">
                 <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
@@ -305,7 +304,7 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
           <!-- RIGHT: Abstract max 148 words + Keywords (fixed, no full width) -->
           <section class="pdf-abstract-panel">
             <h3>Abstract</h3>
-            <p>${getFirstNWords(stripHtml(draft.abstract || ''), 148)}</p>
+            <p>${escapeHtml(getFirstNWords(draft.abstract || '', 148))}</p>
             <div class="pdf-keywords">
               <strong>Keywords:</strong> ${escapeHtml(parseKeywords(draft.keywords).join(', '))}
             </div>
@@ -319,8 +318,7 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
       <main class="pdf-content">
         ${draft.sections.map((section: any) => {
           const isReferences = /^(references|bibliography|works cited)/i.test(section.heading.trim());
-          const hasTableOrImage = /<table|<img/i.test(section.content || '');
-          const isFullWidth = hasTableOrImage || isReferences;
+          const isFullWidth = section.isFullWidth || isReferences;
           return isFullWidth
             ? `<div class="pdf-section-full${isReferences ? ' pdf-references-section' : ''}">
                 <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
@@ -382,8 +380,4 @@ function escapeHtml(value: string) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
-
-function stripHtml(value: string): string {
-  return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
