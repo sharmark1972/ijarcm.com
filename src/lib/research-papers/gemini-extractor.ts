@@ -30,8 +30,16 @@ Fields to extract:
 - authors: Array of author objects with "name" (string) and "isCorresponding" (boolean, first author is corresponding)
 - affiliation: Full institutional affiliation (department, university, location)
 - email: Corresponding author email if found, else empty string
-- abstract: Full abstract text, maximum 148 words
+- abstract: Rewritten abstract, maximum 148 words (see rewriting rules below)
 - keywords: Array of keywords
+
+Abstract rewriting rules:
+- Rewrite the abstract completely in your own words — do NOT copy sentences verbatim from the paper
+- Preserve the original meaning, research findings, methodology, and conclusions fully
+- Keep it concise: maximum 148 words, no filler phrases
+- Write in clear, formal, academic English that sounds naturally human
+- Avoid robotic, repetitive, or overly passive phrasing
+- Paraphrase naturally so the result is plagiarism-free
 
 Rules:
 - title must be clean — remove surrounding quotes if any
