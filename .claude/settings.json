@@ -4,7 +4,11 @@
       "Bash(node -e ' *)",
       "Bash(git commit -m ' *)",
       "PowerShell(Start-Process \"C:\\\\Users\\\\VARA\\\\Downloads\\\\Ijarcm\\\\IJSRHSS25324.pdf\")",
-      "Bash(mysql -h localhost -u root ijarcm)"
+      "Bash(mysql -h localhost -u root ijarcm)",
+      "Bash(npm show *)",
+      "Bash(findstr \"\\\\\"13\")",
+      "Bash(findstr \"\\\\\"1[23]\")",
+      "Bash(node -e \"require\\('@sparticuz/chromium'\\); require\\('puppeteer-core'\\); console.log\\('OK'\\)\")"
     ]
   }
 }
