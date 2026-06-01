@@ -94,6 +94,7 @@ export default function NewResearchPaperPage() {
   const [issues, setIssues] = useState<AdminIssue[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPreviewingPdf, setIsPreviewingPdf] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [extractionStatus, setExtractionStatus] = useState<'idle' | 'gemini' | 'zai' | 'basic' | 'done'>('idle');
@@ -101,6 +102,9 @@ export default function NewResearchPaperPage() {
   const [extractionMode, setExtractionMode] = useState<'auto' | 'gemini' | 'zai' | 'basic'>('auto');
   const [paperStatus, setPaperStatus] = useState<string>('PUBLISHED');
   const [paperType, setPaperType] = useState<string>('');
+  const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
+  const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
+  const [pdfChoice, setPdfChoice] = useState<'generated' | 'uploaded' | null>(null);
 
   if (!isAdmin()) {
     redirect('/dashboard');
@@ -155,6 +159,9 @@ export default function NewResearchPaperPage() {
     setIsProcessing(false);
     setMessage('');
     setError('');
+    setGeneratedPdfBlob(null);
+    setUploadedPdfFile(null);
+    setPdfChoice(null);
   };
 
   const analyze = async () => {
@@ -387,7 +394,19 @@ export default function NewResearchPaperPage() {
 
   const createPaper = async () => {
     if (!draft.title) {
-      setError('Title is required before creating paper.');
+      setError('Title is required before submitting.');
+      return;
+    }
+    if (!pdfChoice) {
+      setError('Please select a PDF option before submitting.');
+      return;
+    }
+    if (pdfChoice === 'uploaded' && !uploadedPdfFile) {
+      setError('Please upload a corrected PDF before submitting.');
+      return;
+    }
+    if (pdfChoice === 'generated' && !generatedPdfBlob) {
+      setError('Please preview or download the PDF first.');
       return;
     }
 
@@ -396,7 +415,6 @@ export default function NewResearchPaperPage() {
       setError('');
       setMessage('');
 
-      // Build authors array for old papers API format
       const authors = draft.authors
         .filter((a) => a.name.trim())
         .map((a) => ({
@@ -406,21 +424,6 @@ export default function NewResearchPaperPage() {
           isCorresponding: a.corresponding,
         }));
 
-      // Map sections to old paperContent fields by heading keyword
-      const findSection = (keywords: string[]) =>
-        draft.sections
-          .filter((s) => keywords.some((k) => s.heading.toLowerCase().includes(k)))
-          .map((s) => s.cleaned)
-          .join('\n\n') || undefined;
-
-      const introduction = findSection(['introduction']);
-      const literatureReview = findSection(['literature', 'review', 'hypothesis']);
-      const methodology = findSection(['method', 'methodology', 'material']);
-      const results = findSection(['result', 'finding']);
-      const discussion = findSection(['discussion']);
-      const conclusion = findSection(['conclusion']);
-      const references = findSection(['reference', 'bibliography']);
-
       const submitData = new FormData();
       submitData.append('title', draft.title);
       submitData.append('abstract', draft.abstract || '');
@@ -429,16 +432,16 @@ export default function NewResearchPaperPage() {
       submitData.append('category', draft.category || 'Research');
       submitData.append('status', paperStatus);
       if (paperType) submitData.append('paperType', paperType);
-      submitData.append('generatePDF', 'true');
       if (issueId) submitData.append('issueId', issueId);
       if (draft.doi) submitData.append('doi', draft.doi);
-      if (introduction) submitData.append('introduction', introduction);
-      if (literatureReview) submitData.append('literatureReview', literatureReview);
-      if (methodology) submitData.append('methodology', methodology);
-      if (results) submitData.append('results', results);
-      if (discussion) submitData.append('discussion', discussion);
-      if (conclusion) submitData.append('conclusion', conclusion);
-      if (references) submitData.append('references', references);
+      submitData.append('generatePDF', 'false');
+
+      if (pdfChoice === 'uploaded' && uploadedPdfFile) {
+        submitData.append('file', uploadedPdfFile);
+      } else if (pdfChoice === 'generated' && generatedPdfBlob) {
+        const pdfFile = new File([generatedPdfBlob], 'research-paper.pdf', { type: 'application/pdf' });
+        submitData.append('file', pdfFile);
+      }
 
       const response = await fetch('/api/admin/papers', {
         method: 'POST',
@@ -446,12 +449,12 @@ export default function NewResearchPaperPage() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to create paper');
+      if (!response.ok) throw new Error(data.error || 'Failed to submit paper');
 
-      setMessage('Paper created successfully!');
+      setMessage('Paper submitted successfully!');
       router.push('/admin/papers');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create paper');
+      setError(err instanceof Error ? err.message : 'Failed to submit paper');
     } finally {
       setIsSaving(false);
     }
@@ -483,33 +486,120 @@ export default function NewResearchPaperPage() {
   };
 
   const previewPdf = async () => {
-    if (!draftId) {
-      setError('Upload and read a DOCX file before previewing.');
+    if (!draft.title) {
+      setError('Title is required before previewing.');
       return;
     }
 
     const previewWindow = window.open('', '_blank');
 
     try {
-      setIsSaving(true);
-      await silentSave();
-      const response = await fetch(`/api/admin/research-papers/${draftId}/generate-preview-pdf`, {
+      setIsPreviewingPdf(true);
+      setError('');
+
+      const issueData = selectedIssue
+        ? {
+            volume: selectedIssue.volume,
+            issueNumber: selectedIssue.issueNumber,
+            year: selectedIssue.year,
+            publishDate: new Date().toISOString(),
+          }
+        : null;
+
+      const response = await fetch('/api/admin/research-papers/preview-pdf', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: draft.title,
+          abstract: draft.abstract,
+          keywords: draft.keywords,
+          doi: draft.doi || undefined,
+          authors: draft.authors.map((a) => ({
+            name: a.name,
+            email: a.email || undefined,
+            affiliation: (a as any).affiliation || undefined,
+          })),
+          sections: draft.sections.map((s) => ({
+            heading: s.heading,
+            content: s.cleaned,
+            isFullWidth: s.isFullWidth ?? true,
+          })),
+          issue: issueData,
+        }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to generate PDF preview');
-      const previewUrl = `/api/admin/research-papers/${draftId}/pdf?type=preview&t=${Date.now()}`;
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to generate PDF preview');
+      }
+
+      const blob = await response.blob();
+      setGeneratedPdfBlob(blob);
+      if (pdfChoice !== 'uploaded') setPdfChoice('generated');
+      const url = URL.createObjectURL(blob);
       if (previewWindow) {
-        previewWindow.location.href = previewUrl;
+        previewWindow.location.href = url;
         previewWindow.focus();
       } else {
-        window.open(previewUrl, '_blank');
+        window.open(url, '_blank');
       }
     } catch (err) {
       if (previewWindow) previewWindow.close();
       setError(err instanceof Error ? err.message : 'Failed to generate PDF preview');
     } finally {
-      setIsSaving(false);
+      setIsPreviewingPdf(false);
+    }
+  };
+
+  const downloadPdf = async () => {
+    if (!draft.title) {
+      setError('Title is required before downloading.');
+      return;
+    }
+
+    try {
+      setIsPreviewingPdf(true);
+      setError('');
+
+      const issueData = selectedIssue
+        ? { volume: selectedIssue.volume, issueNumber: selectedIssue.issueNumber, year: selectedIssue.year, publishDate: new Date().toISOString() }
+        : null;
+
+      const response = await fetch('/api/admin/research-papers/preview-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: draft.title,
+          abstract: draft.abstract,
+          keywords: draft.keywords,
+          doi: draft.doi || undefined,
+          authors: draft.authors.map((a) => ({ name: a.name, email: a.email || undefined, affiliation: (a as any).affiliation || undefined })),
+          sections: draft.sections.map((s) => ({ heading: s.heading, content: s.cleaned, isFullWidth: s.isFullWidth ?? true })),
+          issue: issueData,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      setGeneratedPdfBlob(blob);
+      if (pdfChoice !== 'uploaded') setPdfChoice('generated');
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${draft.title.slice(0, 50)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download PDF');
+    } finally {
+      setIsPreviewingPdf(false);
     }
   };
 
@@ -840,24 +930,6 @@ export default function NewResearchPaperPage() {
               </div>
             </section>
 
-            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/50">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-950">Preview</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {selectedIssue ? selectedIssue.title : 'Issue can be assigned later'}
-                </p>
-              </div>
-              <div className="mt-5 grid gap-2">
-                <Button variant="outline" disabled={!draft.title || isSaving} onClick={previewPdf}>
-                  <Eye className="h-4 w-4" />
-                  Preview PDF
-                </Button>
-                <Button className="bg-green-700 hover:bg-green-800" disabled={!draft.title || isSaving} onClick={createPaper}>
-                  <Save className="h-4 w-4" />
-                  {isSaving ? 'Creating...' : 'Create Paper'}
-                </Button>
-              </div>
-            </section>
           </div>
 
           <div className="space-y-6">
@@ -1024,6 +1096,64 @@ export default function NewResearchPaperPage() {
                   })}
                 </div>
               </div>
+            </section>
+
+            <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/50">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Preview & Submit</h2>
+                <p className="mt-0.5 text-xs text-slate-500">{selectedIssue ? selectedIssue.title : 'Issue can be assigned later'}</p>
+              </div>
+
+              {/* Preview / Download */}
+              <div className="mt-4 flex gap-2">
+                <Button variant="outline" className="flex-1" disabled={!draft.title || isPreviewingPdf || isSaving} onClick={previewPdf}>
+                  <Eye className="h-4 w-4" />
+                  {isPreviewingPdf ? 'Generating...' : 'Preview PDF'}
+                </Button>
+                <Button variant="outline" className="flex-1" disabled={!draft.title || isPreviewingPdf || isSaving} onClick={downloadPdf}>
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </Button>
+              </div>
+
+              {/* PDF Selection */}
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-medium text-slate-500 uppercase tracking-wide">Select PDF for submission</p>
+                <div className="space-y-2">
+                  <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${pdfChoice === 'generated' ? 'border-slate-800 bg-slate-50' : 'border-slate-200 hover:border-slate-300'} ${!generatedPdfBlob ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                    <input type="radio" name="pdfChoice" value="generated" checked={pdfChoice === 'generated'} disabled={!generatedPdfBlob} onChange={() => setPdfChoice('generated')} className="accent-slate-900" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">Use generated PDF</p>
+                      <p className="text-xs text-slate-500">{generatedPdfBlob ? '✓ Ready to submit' : 'Preview or Download first'}</p>
+                    </div>
+                  </label>
+                  <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${pdfChoice === 'uploaded' ? 'border-slate-800 bg-slate-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                    <input type="radio" name="pdfChoice" value="uploaded" checked={pdfChoice === 'uploaded'} onChange={() => setPdfChoice('uploaded')} className="accent-slate-900" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-800">Upload corrected PDF</p>
+                      <p className="text-xs text-slate-500 truncate">{uploadedPdfFile ? `✓ ${uploadedPdfFile.name}` : 'Upload your corrected version'}</p>
+                    </div>
+                  </label>
+                </div>
+
+                {pdfChoice === 'uploaded' && (
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    className="mt-2 w-full text-sm text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-slate-200"
+                    onChange={(e) => setUploadedPdfFile(e.target.files?.[0] || null)}
+                  />
+                )}
+              </div>
+
+              <Button
+                className="mt-4 w-full bg-green-700 hover:bg-green-800"
+                disabled={!draft.title || isSaving || isPreviewingPdf || !pdfChoice || (pdfChoice === 'uploaded' && !uploadedPdfFile)}
+                onClick={createPaper}
+              >
+                <Save className="h-4 w-4" />
+                {isSaving ? 'Submitting...' : 'Submit Paper'}
+              </Button>
             </section>
 
           </div>

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { createResearchPaperDraftFromUpload, ExtractionMode } from '@/lib/research-papers/research-paper-service';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
