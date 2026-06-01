@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +102,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    revalidatePath('/impact-factors');
+    revalidatePath('/');
     return NextResponse.json(impactFactor, { status: 201 });
   } catch (error) {
     console.error('Error creating impact factor:', error);

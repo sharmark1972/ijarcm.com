@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,6 +114,8 @@ export async function PUT(
       }
     });
 
+    revalidatePath('/impact-factors');
+    revalidatePath('/');
     return NextResponse.json(impactFactor);
   } catch (error) {
     console.error('Error updating impact factor:', error);
@@ -138,6 +141,8 @@ export async function DELETE(
       where: { id: params.id }
     });
 
+    revalidatePath('/impact-factors');
+    revalidatePath('/');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting impact factor:', error);

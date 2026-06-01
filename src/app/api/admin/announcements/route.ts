@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    revalidatePath('/');
     return NextResponse.json({
       message: 'Announcement created successfully',
       announcement
@@ -251,6 +253,7 @@ export async function PUT(request: NextRequest) {
       }
     });
 
+    revalidatePath('/');
     return NextResponse.json({
       message: 'Announcement updated successfully',
       announcement: updatedAnnouncement
@@ -315,6 +318,7 @@ export async function DELETE(request: NextRequest) {
       where: { id }
     });
 
+    revalidatePath('/');
     return NextResponse.json({
       message: 'Announcement deleted successfully'
     });

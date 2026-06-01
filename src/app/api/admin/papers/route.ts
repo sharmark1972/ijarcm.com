@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { generateScopusPDF } from '@/lib/generateScopusPDF';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -534,6 +535,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    revalidatePath('/library');
+    revalidatePath('/archives');
+    revalidatePath('/');
     return NextResponse.json({
       success: true,
       paper: createdPaper,

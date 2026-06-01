@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { generateIssueCover } from '@/lib/issueCoverGenerator';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,6 +169,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    revalidatePath('/issues');
+    revalidatePath('/archives');
+    revalidatePath('/');
     return NextResponse.json(issue, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

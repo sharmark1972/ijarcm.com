@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +156,9 @@ export async function PUT(
       },
     });
 
+    revalidatePath('/issues');
+    revalidatePath('/archives');
+    revalidatePath('/');
     return NextResponse.json(issue);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -222,6 +226,9 @@ export async function DELETE(
       where: { id: params.id },
     });
 
+    revalidatePath('/issues');
+    revalidatePath('/archives');
+    revalidatePath('/');
     return NextResponse.json({ message: 'Issue deleted successfully' });
   } catch (error) {
     console.error('Error deleting issue:', error);

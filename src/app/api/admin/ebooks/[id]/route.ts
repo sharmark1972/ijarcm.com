@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadToR2, deleteFromR2 } from '@/lib/r2-upload';
 import { isRemoteFilePath } from '@/lib/file-storage';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -219,6 +220,7 @@ export async function PUT(
       where: { id: ebook.id }
     });
 
+    revalidatePath('/ebooks');
     return NextResponse.json({
       success: true,
       ebook: updatedEbook,
@@ -277,6 +279,7 @@ export async function DELETE(
       where: { id: params.id }
     });
 
+    revalidatePath('/ebooks');
     return NextResponse.json({
       success: true,
       message: 'Ebook deleted successfully'

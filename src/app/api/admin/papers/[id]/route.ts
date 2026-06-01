@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,5 +146,8 @@ export async function PATCH(
     }
   }
 
+  revalidatePath('/library');
+  revalidatePath('/archives');
+  revalidatePath('/');
   return NextResponse.json({ paper: updatedPaper });
 }

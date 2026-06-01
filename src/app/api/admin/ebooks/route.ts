@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { uploadToR2 } from '@/lib/r2-upload';
+import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -255,6 +256,7 @@ export async function POST(request: NextRequest) {
       where: { id: ebook.id }
     });
 
+    revalidatePath('/ebooks');
     return NextResponse.json({
       success: true,
       ebook: createdEbook,
