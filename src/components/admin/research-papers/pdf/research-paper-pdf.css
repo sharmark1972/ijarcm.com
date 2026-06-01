@@ -78,6 +78,10 @@
   padding: 10mm 14mm 18mm;
 }
 
+.research-paper-sheet * {
+  font-family: "Times New Roman", Times, serif;
+}
+
 .pdf-first-header {
   padding-bottom: 14px;
 }
@@ -282,6 +286,21 @@
   margin: 0 0 8px;
 }
 
+.pdf-section-two-col p,
+.pdf-section-full p {
+  color: #000000;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: justify;
+  word-spacing: 0.04em;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  orphans: 2;
+  widows: 2;
+  hyphens: auto;
+  margin: 0 0 8px;
+}
+
 .pdf-keywords {
   border-left: 3px solid #0f6b43;
   color: #000000;
@@ -319,7 +338,6 @@
   font-weight: 700;
   line-height: 1.3;
   break-after: avoid;
-  column-span: all;
 }
 
 .pdf-references-section {

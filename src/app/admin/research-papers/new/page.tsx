@@ -104,6 +104,7 @@ export default function NewResearchPaperPage() {
   const [extractionMode, setExtractionMode] = useState<'auto' | 'gemini' | 'zai' | 'basic'>('auto');
   const [paperStatus, setPaperStatus] = useState<string>('PUBLISHED');
   const [paperType, setPaperType] = useState<string>('');
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
   const [uploadedPdfFile, setUploadedPdfFile] = useState<File | null>(null);
   const [pdfChoice, setPdfChoice] = useState<'generated' | 'uploaded' | null>(null);
@@ -441,6 +442,7 @@ export default function NewResearchPaperPage() {
   };
 
   const createPaper = async () => {
+    setSubmitAttempted(true);
     if (!draft.title) {
       setError('Title is required before submitting.');
       return;
@@ -849,7 +851,7 @@ export default function NewResearchPaperPage() {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Issue</label>
                   <Select value={issueId || 'none'} onValueChange={(value) => setIssueId(value === 'none' ? '' : value)}>
-                    <SelectTrigger className={paperStatus === 'PUBLISHED' && !issueId ? 'border-red-400 ring-1 ring-red-400' : ''}>
+                    <SelectTrigger className={submitAttempted && paperStatus === 'PUBLISHED' && !issueId ? 'border-red-400 ring-1 ring-red-400' : ''}>
                       <SelectValue placeholder="Assign later" />
                     </SelectTrigger>
                     <SelectContent>
@@ -861,7 +863,7 @@ export default function NewResearchPaperPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {paperStatus === 'PUBLISHED' && !issueId && (
+                  {submitAttempted && paperStatus === 'PUBLISHED' && !issueId && (
                     <p className="mt-1 text-xs text-red-600">Issue is required when status is Published.</p>
                   )}
                 </div>

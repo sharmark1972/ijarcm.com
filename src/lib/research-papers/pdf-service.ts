@@ -151,7 +151,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
           </aside>
           <section class="pdf-abstract-panel">
             <h3>Abstract</h3>
-            <p>${escapeHtml(getFirstNWords(data.abstract || '', 148))}</p>
+            <p>${getFirstNWords(stripHtml(data.abstract || ''), 148)}</p>
             <div class="pdf-keywords">
               <strong>Keywords:</strong> ${escapeHtml(parseKeywords(data.keywords).join(', '))}
             </div>
@@ -304,7 +304,7 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
           <!-- RIGHT: Abstract max 148 words + Keywords (fixed, no full width) -->
           <section class="pdf-abstract-panel">
             <h3>Abstract</h3>
-            <p>${escapeHtml(getFirstNWords(draft.abstract || '', 148))}</p>
+            <p>${getFirstNWords(stripHtml(draft.abstract || ''), 148)}</p>
             <div class="pdf-keywords">
               <strong>Keywords:</strong> ${escapeHtml(parseKeywords(draft.keywords).join(', '))}
             </div>
@@ -380,4 +380,8 @@ function escapeHtml(value: string) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
