@@ -445,6 +445,9 @@ export default function NewResearchPaperPage() {
       setError('Title is required before submitting.');
       return;
     }
+    if (paperStatus === 'PUBLISHED' && !issueId) {
+      return;
+    }
     if (!pdfChoice) {
       setError('Please select a PDF option before submitting.');
       return;
@@ -846,7 +849,7 @@ export default function NewResearchPaperPage() {
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Issue</label>
                   <Select value={issueId || 'none'} onValueChange={(value) => setIssueId(value === 'none' ? '' : value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className={paperStatus === 'PUBLISHED' && !issueId ? 'border-red-400 ring-1 ring-red-400' : ''}>
                       <SelectValue placeholder="Assign later" />
                     </SelectTrigger>
                     <SelectContent>
@@ -858,6 +861,9 @@ export default function NewResearchPaperPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {paperStatus === 'PUBLISHED' && !issueId && (
+                    <p className="mt-1 text-xs text-red-600">Issue is required when status is Published.</p>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
