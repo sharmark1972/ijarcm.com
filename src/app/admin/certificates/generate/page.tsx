@@ -5,58 +5,24 @@ import html2canvas from 'html2canvas';
 import { useAuth } from '@/hooks/useAuth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import {
-  Award,
-  FileText,
-  AlertCircle,
-  Check
-} from 'lucide-react';
+import { Award, FileText, AlertCircle, Check } from 'lucide-react';
 import Certificate from '@/components/Certificate';
 import { CERTIFICATE_TEMPLATES, CertificateTemplate, JournalInfo } from '@/types/certificate';
-
-interface Journal {
-  id: string;
-  name: string;
-  abbreviation: string;
-  website?: string | null;
-  issnPrint?: string | null;
-  issnOnline?: string | null;
-  origin?: string | null;
-  doiAllotted: boolean;
-  isDefault: boolean;
-  isActive: boolean;
-}
-
-interface Conference {
-  id: string;
-  title: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  location?: string;
-  status: string;
-}
-
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  institution?: string;
-}
+import ConferenceFields, { createConferenceIfNeeded } from './type-fields/ConferenceFields';
+import PublicationFields from './type-fields/PublicationFields';
+import type { Journal, User, CertificateTypeValue, TypeFieldsData } from './types';
 
 export default function GenerateCertificatePage() {
   const { isAdmin } = useAuth();
-  const [conferences, setConferences] = useState<Conference[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [journals, setJournals] = useState<Journal[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  
+
   // Form state
-  const [certificateType, setCertificateType] = useState<'PUBLICATION' | 'CONFERENCE'>('PUBLICATION');
-  const [selectedConference, setSelectedConference] = useState('');
+  const [certificateType, setCertificateType] = useState<CertificateTypeValue>('PUBLICATION');
+  const [typeFieldsData, setTypeFieldsData] = useState<TypeFieldsData>({});
   const [selectedUser, setSelectedUser] = useState('');
   const [generateWithoutUser, setGenerateWithoutUser] = useState(false);
   const [customName, setCustomName] = useState('');
@@ -67,19 +33,6 @@ export default function GenerateCertificatePage() {
   const [customDate, setCustomDate] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<CertificateTemplate>('classic');
   const [conferenceParticipationType, setConferenceParticipationType] = useState<'participation' | 'presentation' | 'both'>('both');
-
-  // Conference hybrid mode
-  const [conferenceMode, setConferenceMode] = useState<'select' | 'create'>('select');
-  const [newConferenceData, setNewConferenceData] = useState({
-    title: '',
-    description: '',
-    startDate: '',
-    endDate: '',
-    location: '',
-    status: 'UPCOMING' as 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED',
-    videoUrl: '',
-  });
-  const [isCreatingConference, setIsCreatingConference] = useState(false);
 
   const [generatedCertificate, setGeneratedCertificate] = useState<{
     certificateNumber: string;
@@ -100,12 +53,7 @@ export default function GenerateCertificatePage() {
     try {
       const certMain = certCaptureRef.current.querySelector('.cert-main') as HTMLDivElement;
       if (!certMain) return;
-      const canvas = await html2canvas(certMain, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-      });
+      const canvas = await html2canvas(certMain, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: null });
       const link = document.createElement('a');
       link.download = `certificate-${generatedCertificate?.certificateNumber}.png`;
       link.href = canvas.toDataURL('image/png');
@@ -123,18 +71,9 @@ export default function GenerateCertificatePage() {
     try {
       const certMain = certCaptureRef.current.querySelector('.cert-main') as HTMLDivElement;
       if (!certMain) return;
-      const canvas = await html2canvas(certMain, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-      });
+      const canvas = await html2canvas(certMain, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: null });
       const { default: jsPDF } = await import('jspdf');
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [canvas.width / 2, canvas.height / 2],
-      });
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
       const imgData = canvas.toDataURL('image/png');
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
       pdf.save(`certificate-${generatedCertificate?.certificateNumber}.pdf`);
@@ -146,24 +85,16 @@ export default function GenerateCertificatePage() {
   };
 
   useEffect(() => {
-    if (!isAdmin) {
-      redirect('/dashboard');
-    }
+    if (!isAdmin) redirect('/dashboard');
   }, [isAdmin]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [conferencesResponse, usersResponse, journalsResponse] = await Promise.all([
-          fetch('/api/admin/conferences?limit=100'),
+        const [usersResponse, journalsResponse] = await Promise.all([
           fetch('/api/admin/users?limit=100'),
           fetch('/api/admin/journals'),
         ]);
-
-        if (conferencesResponse.ok) {
-          const conferencesData = await conferencesResponse.json();
-          setConferences(conferencesData.conferences || []);
-        }
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           setUsers(usersData.users || []);
@@ -181,22 +112,13 @@ export default function GenerateCertificatePage() {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  const formatDateRange = (startDate: string, endDate: string) => {
-    const start = new Date(startDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-    const end = new Date(endDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-    return `${start} - ${end}`;
+  // Reset type-specific data when type changes
+  const handleTypeChange = (newType: CertificateTypeValue) => {
+    setCertificateType(newType);
+    setTypeFieldsData({});
   };
 
   const handleGenerateCertificate = async () => {
@@ -204,110 +126,64 @@ export default function GenerateCertificatePage() {
       alert('Please select a user or enable "Generate without user" option');
       return;
     }
-
     if (!customName.trim()) {
       alert('Please enter a recipient name');
       return;
     }
 
+    const selectedUserData = users.find(u => u.id === selectedUser);
+
+    const requestBody: Record<string, unknown> = {
+      type: certificateType,
+      authorName: customName,
+      institution: customInstitution || selectedUserData?.institution || '',
+      topic: topic || undefined,
+      prize: prize || undefined,
+      customDate: customDate || undefined,
+      journalId: selectedJournalId || undefined,
+    };
+
+    if (!generateWithoutUser && selectedUser) {
+      requestBody.userId = selectedUser;
+    }
+
+    let resolvedConferenceName = '';
+    let resolvedConferenceDates = '';
+
     if (certificateType === 'CONFERENCE') {
-      if (conferenceMode === 'select' && !selectedConference) {
-        alert('Please select a conference for conference certificates');
+      // Check if typeFieldsData already has conferenceName (select mode)
+      // or if we need to create (create mode via hidden input)
+      if (typeFieldsData.conferenceName) {
+        resolvedConferenceName = typeFieldsData.conferenceName;
+        resolvedConferenceDates = typeFieldsData.conferenceDates || '';
+      } else {
+        // create mode — call helper
+        setGenerating(true);
+        const created = await createConferenceIfNeeded();
+        if (!created) { setGenerating(false); return; }
+        resolvedConferenceName = created.conferenceName;
+        resolvedConferenceDates = created.conferenceDates;
+      }
+      if (!resolvedConferenceName) {
+        alert('Please select or create a conference');
         return;
       }
-      if (conferenceMode === 'create') {
-        if (!newConferenceData.title.trim()) { alert('Please enter a conference name'); return; }
-        if (!newConferenceData.startDate) { alert('Please enter a start date'); return; }
-        if (!newConferenceData.endDate) { alert('Please enter an end date'); return; }
-        if (new Date(newConferenceData.startDate) >= new Date(newConferenceData.endDate)) {
-          alert('End date must be after start date'); return;
-        }
+      requestBody.conferenceName = resolvedConferenceName;
+      requestBody.conferenceDates = resolvedConferenceDates;
+
+    } else if (certificateType === 'PUBLICATION') {
+      if (!typeFieldsData.paperId) {
+        alert('Please select a paper');
+        return;
       }
+      requestBody.paperId = typeFieldsData.paperId;
     }
 
     setGenerating(true);
     try {
-      const selectedConferenceData = conferences.find(c => c.id === selectedConference);
-      const selectedUserData = users.find(u => u.id === selectedUser);
-
-      let resolvedConferenceName = '';
-      let resolvedConferenceDates = '';
-
-      const requestBody: {
-        userId?: string;
-        type: string;
-        authorName: string;
-        institution: string;
-        conferenceName?: string;
-        conferenceDates?: string;
-        topic?: string;
-        prize?: string;
-        customDate?: string;
-        journalId?: string;
-      } = {
-        type: certificateType,
-        authorName: customName,
-        institution: customInstitution || selectedUserData?.institution || '',
-        topic: topic || undefined,
-        prize: prize || undefined,
-        customDate: customDate || undefined,
-        journalId: selectedJournalId || undefined,
-      };
-
-      // Only include userId if not generating without user
-      if (!generateWithoutUser && selectedUser) {
-        requestBody.userId = selectedUser;
-      }
-
-      if (certificateType === 'CONFERENCE') {
-        if (conferenceMode === 'select') {
-          resolvedConferenceName = selectedConferenceData?.title || '';
-          resolvedConferenceDates = selectedConferenceData
-            ? formatDateRange(selectedConferenceData.startDate, selectedConferenceData.endDate)
-            : '';
-        } else {
-          // Create new conference first
-          setIsCreatingConference(true);
-          let createdConference;
-          try {
-            const createRes = await fetch('/api/admin/conferences', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                title: newConferenceData.title.trim(),
-                description: newConferenceData.description.trim() || undefined,
-                startDate: newConferenceData.startDate,
-                endDate: newConferenceData.endDate,
-                location: newConferenceData.location.trim() || undefined,
-                status: newConferenceData.status,
-                videoUrl: newConferenceData.videoUrl.trim() || undefined,
-              }),
-            });
-            if (!createRes.ok) {
-              const err = await createRes.json();
-              alert(err.error || 'Failed to create conference');
-              return;
-            }
-            const createData = await createRes.json();
-            createdConference = createData.conference;
-          } finally {
-            setIsCreatingConference(false);
-          }
-          resolvedConferenceName = createdConference.title;
-          resolvedConferenceDates = formatDateRange(createdConference.startDate, createdConference.endDate);
-        }
-        requestBody.conferenceName = resolvedConferenceName;
-        requestBody.conferenceDates = resolvedConferenceDates;
-      } else {
-        alert('Publication certificates require a paper ID. This feature will be available soon.');
-        return;
-      }
-
       const response = await fetch('/api/certificates', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
 
@@ -368,18 +244,14 @@ export default function GenerateCertificatePage() {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">Certificate Details</h2>
 
-            {/* Grid Layout for Compact Form */}
             <div className="space-y-4">
-              {/* Row 1: Certificate Type + Certificate Template */}
+              {/* Row 1: Certificate Type + Template */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Certificate Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Certificate Type
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Certificate Type</label>
                   <select
                     value={certificateType}
-                    onChange={(e) => setCertificateType(e.target.value as 'PUBLICATION' | 'CONFERENCE')}
+                    onChange={(e) => handleTypeChange(e.target.value as CertificateTypeValue)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="PUBLICATION">Publication Certificate</option>
@@ -387,26 +259,21 @@ export default function GenerateCertificatePage() {
                   </select>
                 </div>
 
-                {/* Certificate Template Dropdown */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Certificate Template
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Certificate Template</label>
                   <select
                     value={selectedTemplate}
                     onChange={(e) => setSelectedTemplate(e.target.value as CertificateTemplate)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                   >
                     {CERTIFICATE_TEMPLATES.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
+                      <option key={template.id} value={template.id}>{template.name}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* Template Buttons - Full Width */}
+              {/* Template Buttons */}
               <div className="grid grid-cols-3 gap-2">
                 {CERTIFICATE_TEMPLATES.map((template) => (
                   <button
@@ -415,29 +282,23 @@ export default function GenerateCertificatePage() {
                     onClick={() => setSelectedTemplate(template.id)}
                     className={`p-2 rounded-lg border-2 transition-all ${
                       selectedTemplate === template.id
-                        ? template.id === 'classic'
-                          ? 'border-amber-500 bg-amber-50'
-                          : template.id === 'modern'
-                          ? 'border-sky-500 bg-sky-50'
+                        ? template.id === 'classic' ? 'border-amber-500 bg-amber-50'
+                          : template.id === 'modern' ? 'border-sky-500 bg-sky-50'
                           : 'border-emerald-500 bg-emerald-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div
-                      className={`h-8 rounded ${
-                        template.id === 'classic'
-                          ? 'bg-gradient-to-r from-amber-200 to-amber-300'
-                          : template.id === 'modern'
-                          ? 'bg-gradient-to-r from-sky-200 to-sky-300'
-                          : 'bg-gradient-to-r from-emerald-200 to-emerald-300'
-                      }`}
-                    />
+                    <div className={`h-8 rounded ${
+                      template.id === 'classic' ? 'bg-gradient-to-r from-amber-200 to-amber-300'
+                        : template.id === 'modern' ? 'bg-gradient-to-r from-sky-200 to-sky-300'
+                        : 'bg-gradient-to-r from-emerald-200 to-emerald-300'
+                    }`} />
                     <p className="text-xs font-medium mt-1 text-gray-600">{template.name}</p>
                   </button>
                 ))}
               </div>
 
-              {/* Journal / Site Selection */}
+              {/* Journal Select */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Journal / Site <span className="text-red-500">*</span>
@@ -468,235 +329,35 @@ export default function GenerateCertificatePage() {
                 })()}
               </div>
 
-              {/* Conference Selection — Hybrid */}
+              {/* Type-specific fields — swappable, no duplicate logic */}
+              {certificateType === 'PUBLICATION' && (
+                <PublicationFields onChange={setTypeFieldsData} />
+              )}
               {certificateType === 'CONFERENCE' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Conference
-                </label>
+                <ConferenceFields onChange={setTypeFieldsData} />
+              )}
 
-                {/* Toggle */}
-                <div className="flex rounded-md border border-gray-300 overflow-hidden mb-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConferenceMode('select');
-                      setNewConferenceData({ title: '', description: '', startDate: '', endDate: '', location: '', status: 'UPCOMING', videoUrl: '' });
-                    }}
-                    className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${
-                      conferenceMode === 'select'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    Select Existing
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConferenceMode('create');
-                      setSelectedConference('');
-                    }}
-                    className={`flex-1 px-3 py-2 text-sm font-medium transition-colors border-l border-gray-300 ${
-                      conferenceMode === 'create'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    + Create New
-                  </button>
-                </div>
-
-                {/* Select Existing mode */}
-                {conferenceMode === 'select' && (
-                  <>
-                    <select
-                      value={selectedConference}
-                      onChange={(e) => setSelectedConference(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Choose a conference...</option>
-                      {conferences.map((conference) => (
-                        <option key={conference.id} value={conference.id}>
-                          {conference.title} ({new Date(conference.startDate).getFullYear()})
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Read-only details when conference selected */}
-                    {selectedConference && (() => {
-                      const conf = conferences.find(c => c.id === selectedConference);
-                      if (!conf) return null;
-                      return (
-                        <div className="mt-3 border border-gray-200 rounded-md bg-gray-50 p-3 space-y-2">
-                          <div>
-                            <p className="text-xs text-gray-500">Conference Name</p>
-                            <p className="text-sm text-gray-800 font-medium">{conf.title}</p>
-                          </div>
-                          {conf.description && (
-                            <div>
-                              <p className="text-xs text-gray-500">Description</p>
-                              <p className="text-sm text-gray-700">{conf.description}</p>
-                            </div>
-                          )}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <p className="text-xs text-gray-500">Start Date</p>
-                              <p className="text-sm text-gray-700">{new Date(conf.startDate).toLocaleDateString('en-IN')}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">End Date</p>
-                              <p className="text-sm text-gray-700">{new Date(conf.endDate).toLocaleDateString('en-IN')}</p>
-                            </div>
-                          </div>
-                          {conf.location && (
-                            <div>
-                              <p className="text-xs text-gray-500">Location</p>
-                              <p className="text-sm text-gray-700">{conf.location}</p>
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-xs text-gray-500">Status</p>
-                            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-xs font-medium ${
-                              conf.status === 'UPCOMING' ? 'bg-blue-100 text-blue-700' :
-                              conf.status === 'ONGOING' ? 'bg-green-100 text-green-700' :
-                              conf.status === 'COMPLETED' ? 'bg-gray-100 text-gray-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>{conf.status}</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </>
-                )}
-
-                {/* Create New mode */}
-                {conferenceMode === 'create' && (
-                  <div className="border border-blue-200 rounded-md bg-blue-50/30 p-3 space-y-2">
-                    {/* Row 1: Conference Name + Location */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Conference Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={newConferenceData.title}
-                          onChange={(e) => setNewConferenceData(prev => ({ ...prev, title: e.target.value }))}
-                          placeholder="Enter conference name"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Location</label>
-                        <input
-                          type="text"
-                          value={newConferenceData.location}
-                          onChange={(e) => setNewConferenceData(prev => ({ ...prev, location: e.target.value }))}
-                          placeholder="Enter location or 'Online'"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Row 2: Description */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                      <textarea
-                        value={newConferenceData.description}
-                        onChange={(e) => setNewConferenceData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Enter conference description"
-                        rows={2}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white resize-none"
-                      />
-                    </div>
-
-                    {/* Row 3: Start Date + End Date */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Start Date & Time <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={newConferenceData.startDate}
-                          onChange={(e) => setNewConferenceData(prev => ({ ...prev, startDate: e.target.value }))}
-                          className="w-full px-2 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          End Date & Time <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={newConferenceData.endDate}
-                          onChange={(e) => setNewConferenceData(prev => ({ ...prev, endDate: e.target.value }))}
-                          className="w-full px-2 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Row 4: Status + Video URL */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-                        <select
-                          value={newConferenceData.status}
-                          onChange={(e) => setNewConferenceData(prev => ({ ...prev, status: e.target.value as 'UPCOMING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' }))}
-                          className="w-full px-2 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        >
-                          <option value="UPCOMING">Upcoming</option>
-                          <option value="ONGOING">Ongoing</option>
-                          <option value="COMPLETED">Completed</option>
-                          <option value="CANCELLED">Cancelled</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Video URL</label>
-                        <input
-                          type="url"
-                          value={newConferenceData.videoUrl}
-                          onChange={(e) => setNewConferenceData(prev => ({ ...prev, videoUrl: e.target.value }))}
-                          placeholder="https://..."
-                          className="w-full px-2 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-              {/* Generate Without User Option */}
+              {/* Generate Without User */}
               <div className="flex items-start gap-2">
                 <input
                   type="checkbox"
                   checked={generateWithoutUser}
                   onChange={(e) => {
                     setGenerateWithoutUser(e.target.checked);
-                    if (e.target.checked) {
-                      setSelectedUser('');
-                    }
+                    if (e.target.checked) setSelectedUser('');
                   }}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
                 />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Generate without user
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    Check to generate without linking to user account
-                  </p>
+                  <label className="block text-sm font-medium text-gray-700">Generate without user</label>
+                  <p className="text-xs text-gray-500">Check to generate without linking to user account</p>
                 </div>
               </div>
 
-              {/* User Selection */}
+              {/* User Select */}
               {!generateWithoutUser && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select User
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select User</label>
                   <select
                     value={selectedUser}
                     onChange={(e) => setSelectedUser(e.target.value)}
@@ -712,15 +373,11 @@ export default function GenerateCertificatePage() {
                 </div>
               )}
 
-              {/* Row: Participation Type + Recipient Name */}
+              {/* Participation Type (Conference only) + Recipient Name */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {certificateType === 'CONFERENCE' ? (
-                      <>Participation Type <span className="text-red-500">*</span></>
-                    ) : (
-                      'Certificate Variant'
-                    )}
+                    {certificateType === 'CONFERENCE' ? <>Participation Type <span className="text-red-500">*</span></> : 'Certificate Variant'}
                   </label>
                   {certificateType === 'CONFERENCE' ? (
                     <select
@@ -733,9 +390,7 @@ export default function GenerateCertificatePage() {
                       <option value="both">Participation & Presentation</option>
                     </select>
                   ) : (
-                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">
-                      -
-                    </div>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500">-</div>
                   )}
                 </div>
                 <div>
@@ -752,12 +407,10 @@ export default function GenerateCertificatePage() {
                 </div>
               </div>
 
-              {/* Row: Institution + Certificate Date */}
+              {/* Institution + Date */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Institution (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Institution (Optional)</label>
                   <input
                     type="text"
                     value={customInstitution}
@@ -767,9 +420,7 @@ export default function GenerateCertificatePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Certificate Date (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Certificate Date (Optional)</label>
                   <input
                     type="date"
                     value={customDate}
@@ -779,12 +430,10 @@ export default function GenerateCertificatePage() {
                 </div>
               </div>
 
-              {/* Row: Topic + Venue + Prize */}
+              {/* Topic + Venue + Prize */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Topic (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Topic (Optional)</label>
                   <input
                     type="text"
                     value={topic}
@@ -794,9 +443,7 @@ export default function GenerateCertificatePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Venue (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Venue (Optional)</label>
                   <input
                     type="text"
                     value={venue}
@@ -806,9 +453,7 @@ export default function GenerateCertificatePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Prize/Award (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Prize/Award (Optional)</label>
                   <input
                     type="text"
                     value={prize}
@@ -818,24 +463,17 @@ export default function GenerateCertificatePage() {
                   />
                 </div>
               </div>
-
-              {/* Generate Button */}
             </div>
 
             <button
               onClick={handleGenerateCertificate}
-              disabled={generating || isCreatingConference}
+              disabled={generating}
               className="w-full mt-6 flex items-center justify-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isCreatingConference ? (
+              {generating ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Conference...
-                </>
-              ) : generating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Generating Certificate...
+                  Generating...
                 </>
               ) : (
                 <>
@@ -849,7 +487,6 @@ export default function GenerateCertificatePage() {
           {/* Right panel: Instructions OR Generated Certificate */}
           {showCertificate && generatedCertificate ? (
             <div className="bg-white rounded-lg shadow-sm overflow-hidden flex flex-col">
-              {/* Header */}
               <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
                   <Check className="w-5 h-5 text-green-600" />
@@ -858,15 +495,9 @@ export default function GenerateCertificatePage() {
                     <p className="text-xs text-gray-500">{generatedCertificate.certificateNumber}</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setShowCertificate(false)}
-                  className="text-gray-400 hover:text-gray-600 text-xl leading-none"
-                >
-                  ×
-                </button>
+                <button onClick={() => setShowCertificate(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
               </div>
 
-              {/* Scaled Certificate Preview */}
               <div className="p-4 flex-1 overflow-hidden">
                 <div style={{ zoom: 0.43, transformOrigin: 'top left' }}>
                   <Certificate
@@ -890,7 +521,6 @@ export default function GenerateCertificatePage() {
                   />
                 </div>
 
-                {/* Download buttons - Image and PDF */}
                 <div className="flex justify-center gap-4 mt-3">
                   <button
                     onClick={handleDownloadImage}
@@ -899,21 +529,9 @@ export default function GenerateCertificatePage() {
                     style={{ background: downloading ? '#9ca3af' : 'linear-gradient(135deg, #92400e, #d97706)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                   >
                     {downloading ? (
-                      <>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
-                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-                        </svg>
-                        Downloading...
-                      </>
+                      <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Downloading...</>
                     ) : (
-                      <>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                          <polyline points="7 10 12 15 17 10"/>
-                          <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Download as Image
-                      </>
+                      <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download as Image</>
                     )}
                   </button>
                   <button
@@ -923,27 +541,15 @@ export default function GenerateCertificatePage() {
                     style={{ background: downloading ? '#9ca3af' : 'linear-gradient(135deg, #0f766e, #14b8a6)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                   >
                     {downloading ? (
-                      <>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
-                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-                        </svg>
-                        Downloading...
-                      </>
+                      <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>Downloading...</>
                     ) : (
-                      <>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                          <polyline points="7 10 12 15 17 10"/>
-                          <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Download as PDF
-                      </>
+                      <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download as PDF</>
                     )}
                   </button>
                 </div>
               </div>
 
-              {/* Hidden full-size cert for html2canvas capture */}
+              {/* Hidden full-size cert for html2canvas */}
               <div ref={certCaptureRef} style={{ position: 'absolute', left: '-9999px', top: '-9999px', pointerEvents: 'none' }}>
                 <Certificate
                   certificateNumber={generatedCertificate.certificateNumber}
@@ -974,13 +580,13 @@ export default function GenerateCertificatePage() {
                   <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 text-sm font-medium">1</span>
                   </div>
-                  <p className="text-sm text-gray-700">Select the certificate type you want to generate</p>
+                  <p className="text-sm text-gray-700">Select the certificate type — Publication or Conference</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 text-sm font-medium">2</span>
                   </div>
-                  <p className="text-sm text-gray-700">For conference certificates, select the specific conference from the dropdown</p>
+                  <p className="text-sm text-gray-700">For publication: select an issue, then select the paper. For conference: select or create a conference</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
@@ -992,7 +598,7 @@ export default function GenerateCertificatePage() {
                   <div className="flex-shrink-0 w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 text-sm font-medium">4</span>
                   </div>
-                  <p className="text-sm text-gray-700">Optionally add the institution name and click generate to create the certificate</p>
+                  <p className="text-sm text-gray-700">Optionally add institution, date, and click Generate</p>
                 </div>
               </div>
               <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -1000,7 +606,7 @@ export default function GenerateCertificatePage() {
                   <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-gray-700">
                     <p className="font-semibold text-yellow-800 mb-1">Important Note:</p>
-                    <p className="text-gray-600">Conference certificates are for participation and recognition. Publication certificates are automatically generated when papers are approved and published.</p>
+                    <p className="text-gray-600">Only published papers are available for publication certificates. Conference certificates are for participation and recognition.</p>
                   </div>
                 </div>
               </div>

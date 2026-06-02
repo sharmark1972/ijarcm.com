@@ -203,7 +203,7 @@ export default function AdminIssuesPage() {
 
   const handleGenerateSingleCover = async () => {
     if (!formData.title || !formData.volume || !formData.issueNumber || !formData.year) {
-      alert('Pehle Title, Volume, Issue Number aur Year fill karo');
+      alert('Please fill in Title, Volume, Issue Number and Year first');
       return;
     }
     setGeneratingCover(true);
@@ -222,10 +222,10 @@ export default function AdminIssuesPage() {
       if (response.ok) {
         setFormData(prev => ({ ...prev, coverImage: data.coverUrl }));
       } else {
-        alert(data.error || 'Cover generate nahi ho saka');
+        alert(data.error || 'Failed to generate cover');
       }
     } catch {
-      alert('Cover generate nahi ho saka');
+      alert('Failed to generate cover');
     } finally {
       setGeneratingCover(false);
     }

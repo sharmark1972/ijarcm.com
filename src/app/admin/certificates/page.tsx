@@ -125,7 +125,7 @@ export default function AdminCertificatesPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Certificates</h1>
-              <p className="mt-1 text-gray-600">Generated certificates ka record</p>
+              <p className="mt-1 text-gray-600">View and manage all generated certificates</p>
             </div>
             <Link
               href="/admin/certificates/generate"
@@ -172,19 +172,19 @@ export default function AdminCertificatesPage() {
             <div className="flex items-center gap-2 ml-auto">
               {bulkConfirm ? (
                 <>
-                  <span className="text-sm text-gray-700">{selectedIds.size} delete kiye jayenge?</span>
+                  <span className="text-sm text-gray-700">Delete {selectedIds.size} selected certificates?</span>
                   <button
                     onClick={handleBulkDelete}
                     disabled={deleting}
                     className="px-3 py-1.5 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50"
                   >
-                    {deleting ? 'Deleting...' : 'Haan, delete karo'}
+                    {deleting ? 'Deleting...' : 'Yes, Delete'}
                   </button>
                   <button
                     onClick={() => setBulkConfirm(false)}
                     className="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300"
                   >
-                    Nahi
+                    No
                   </button>
                 </>
               ) : (
@@ -213,7 +213,7 @@ export default function AdminCertificatesPage() {
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
             </div>
           ) : certificates.length === 0 ? (
-            <div className="text-center py-20 text-gray-500">Koi certificate nahi mila</div>
+            <div className="text-center py-20 text-gray-500">No certificates found</div>
           ) : (
             <table className="w-full table-fixed divide-y divide-gray-200">
               <colgroup>
@@ -287,13 +287,13 @@ export default function AdminCertificatesPage() {
                             disabled={deleting}
                             className="text-xs px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                           >
-                            Haan
+                            Yes
                           </button>
                           <button
                             onClick={() => setConfirmDeleteId(null)}
                             className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
                           >
-                            Nahi
+                            No
                           </button>
                         </div>
                       ) : (

@@ -47,10 +47,10 @@ export default function CertificateViewPage() {
           const data = await response.json();
           setCertificate(data.certificate);
         } else {
-          setError('Certificate nahi mila');
+          setError('Certificate not found');
         }
       } catch {
-        setError('Load karne mein error aaya');
+        setError('Failed to load certificate');
       } finally {
         setLoading(false);
       }
@@ -70,9 +70,9 @@ export default function CertificateViewPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Certificate nahi mila'}</p>
+          <p className="text-red-600 mb-4">{error || 'Certificate not found'}</p>
           <Link href="/admin/certificates" className="text-blue-600 hover:underline">
-            Wapas jao
+            Back to Certificates
           </Link>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function CertificateViewPage() {
           className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
-          Wapas certificates list
+          Back to Certificates
         </Link>
 
         <div className="mb-4">

@@ -8,7 +8,9 @@
       "Bash(npm show *)",
       "Bash(findstr \"\\\\\"13\")",
       "Bash(findstr \"\\\\\"1[23]\")",
-      "Bash(node -e \"require\\('@sparticuz/chromium'\\); require\\('puppeteer-core'\\); console.log\\('OK'\\)\")"
+      "Bash(node -e \"require\\('@sparticuz/chromium'\\); require\\('puppeteer-core'\\); console.log\\('OK'\\)\")",
+      "Bash(Get-ChildItem -Path \"e:\\\\wjiis.com\\\\src\" -Directory)",
+      "Bash(Select-Object Name)"
     ]
   }
 }
