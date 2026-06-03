@@ -10,7 +10,9 @@
       "Bash(findstr \"\\\\\"1[23]\")",
       "Bash(node -e \"require\\('@sparticuz/chromium'\\); require\\('puppeteer-core'\\); console.log\\('OK'\\)\")",
       "Bash(Get-ChildItem -Path \"e:\\\\wjiis.com\\\\src\" -Directory)",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(grep -v \"\\\\\\\\\\\\\\\\admin\\\\\\\\\\\\\\\\\" \"C:\\\\Users\\\\VARA\\\\.claude\\\\projects\\\\e--ijarcm-com\\\\14821140-fd24-4e28-9e8d-40862b4c89d0\\\\tool-results\\\\toolu_014T8xqzT1gkMXWkXSMpuWui.txt\")",
+      "Bash(grep -v \"\\\\\\\\\\\\\\\\api\\\\\\\\\\\\\\\\\")"
     ]
   }
 }

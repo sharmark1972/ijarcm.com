@@ -159,20 +159,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
         </div>
       </div>
       <main class="pdf-content">
-        ${data.sections.map((section) => {
-          const isReferences = /^(references|bibliography|works cited)/i.test(section.heading.trim());
-          const hasTableOrImage = /<table|<img/i.test(section.content || '');
-          const isFullWidth = hasTableOrImage || isReferences;
-          return isFullWidth
-            ? `<div class="pdf-section-full${isReferences ? ' pdf-references-section' : ''}">
-                <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
-                ${section.content || ''}
-               </div>`
-            : `<div class="pdf-section-two-col">
-                <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
-                ${section.content || ''}
-               </div>`;
-        }).join('')}
+        ${renderPdfSections(data.sections)}
       </main>
     </article>
   </main>
@@ -317,20 +304,7 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
 
       <!-- Body sections: 2 column — content flows freely -->
       <main class="pdf-content">
-        ${draft.sections.map((section: any) => {
-          const isReferences = /^(references|bibliography|works cited)/i.test(section.heading.trim());
-          const hasTableOrImage = /<table|<img/i.test(section.content || '');
-          const isFullWidth = hasTableOrImage || isReferences;
-          return isFullWidth
-            ? `<div class="pdf-section-full${isReferences ? ' pdf-references-section' : ''}">
-                <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
-                ${section.content || ''}
-               </div>`
-            : `<div class="pdf-section-two-col">
-                <h3 class="pdf-section-heading">${escapeHtml(section.heading)}</h3>
-                ${section.content || ''}
-               </div>`;
-        }).join('')}
+        ${renderPdfSections(draft.sections)}
       </main>
 
     </article>
@@ -344,6 +318,150 @@ function buildWatermarkSvg(logoBase64: string): string {
     <image href="${logoBase64}" x="70" y="113" width="70" height="70" opacity="0.07" preserveAspectRatio="xMidYMid meet"/>
   </svg>`;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
+type PdfContentBlock = {
+  type: 'text' | 'table' | 'image';
+  html: string;
+  text: string;
+};
+
+function renderPdfSections(
+  sections: Array<{ heading: string; content: string; isFullWidth?: boolean }>,
+): string {
+  const parts: string[] = [];
+  let textFlow: string[] = [];
+
+  const flushTextFlow = () => {
+    if (!textFlow.length) return;
+    parts.push(`<div class="pdf-two-column-flow">${textFlow.join('\n')}</div>`);
+    textFlow = [];
+  };
+
+  for (const section of sections) {
+    const heading = section.heading ? section.heading.trim() : 'Untitled Section';
+    const content = section.content || '';
+    const isReferences = /^(references|bibliography|works cited)/i.test(heading);
+
+    if (isReferences) {
+      flushTextFlow();
+      parts.push(`<div class="pdf-section-full pdf-references-section">
+        <h3 class="pdf-section-heading">${escapeHtml(heading)}</h3>
+        ${content}
+      </div>`);
+      continue;
+    }
+
+    const blocks = splitPdfContentBlocks(content);
+    const firstContentBlockIndex = blocks.findIndex((block) => !isCaptionBlock(block));
+    const startsWithObject = firstContentBlockIndex >= 0 && isObjectBlock(blocks[firstContentBlockIndex]);
+
+    if (startsWithObject) {
+      flushTextFlow();
+    } else {
+      textFlow.push(`<h3 class="pdf-section-heading">${escapeHtml(heading)}</h3>`);
+    }
+
+    blocks.forEach((block, index) => {
+      if (!isObjectBlock(block)) {
+        textFlow.push(block.html);
+        return;
+      }
+
+      const caption = takeTrailingCaption(textFlow);
+      flushTextFlow();
+
+      const includeHeading = startsWithObject && index === firstContentBlockIndex;
+      parts.push(renderFullWidthObject({
+        heading: includeHeading ? heading : '',
+        caption,
+        objectHtml: block.html,
+        objectType: block.type,
+      }));
+    });
+  }
+
+  flushTextFlow();
+  return parts.join('\n');
+}
+
+function splitPdfContentBlocks(html: string): PdfContentBlock[] {
+  const blocks: PdfContentBlock[] = [];
+  const blockRegex = /<(p|h[1-6]|ul|ol|table)[^>]*>[\s\S]*?<\/\1>/gi;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = blockRegex.exec(html)) !== null) {
+    appendLooseHtmlBlock(blocks, html.slice(lastIndex, match.index));
+
+    const tag = match[1].toLowerCase();
+    const blockHtml = match[0];
+    const text = stripHtml(blockHtml);
+
+    if (tag === 'table') {
+      blocks.push({ type: 'table', html: blockHtml, text });
+    } else if (/<img\b/i.test(blockHtml)) {
+      blocks.push({ type: 'image', html: blockHtml, text });
+    } else {
+      blocks.push({ type: 'text', html: blockHtml, text });
+    }
+
+    lastIndex = blockRegex.lastIndex;
+  }
+
+  appendLooseHtmlBlock(blocks, html.slice(lastIndex));
+  return blocks;
+}
+
+function appendLooseHtmlBlock(blocks: PdfContentBlock[], html: string) {
+  const trimmed = html.trim();
+  if (!trimmed) return;
+  blocks.push({
+    type: /<img\b/i.test(trimmed) ? 'image' : 'text',
+    html: trimmed,
+    text: stripHtml(trimmed),
+  });
+}
+
+function isObjectBlock(block: PdfContentBlock): block is PdfContentBlock & { type: 'table' | 'image' } {
+  return block.type === 'table' || block.type === 'image';
+}
+
+function isCaptionBlock(block: PdfContentBlock) {
+  return block.type === 'text' && isCaptionText(block.text);
+}
+
+function isCaptionText(text: string) {
+  return /^(table|figure|fig\.?|image|chart|graph)\s*[\dIVXLC]+[.:)\-\s]/i.test(text.trim());
+}
+
+function takeTrailingCaption(textFlow: string[]) {
+  if (!textFlow.length) return '';
+
+  const lastHtml = textFlow[textFlow.length - 1];
+  const lastText = stripHtml(lastHtml);
+  if (!isCaptionText(lastText)) return '';
+
+  textFlow.pop();
+  return lastText;
+}
+
+function renderFullWidthObject({
+  heading,
+  caption,
+  objectHtml,
+  objectType,
+}: {
+  heading: string;
+  caption: string;
+  objectHtml: string;
+  objectType: 'table' | 'image';
+}) {
+  return `<figure class="pdf-full-width-object pdf-${objectType}-object">
+    ${heading ? `<h3 class="pdf-section-heading">${escapeHtml(heading)}</h3>` : ''}
+    ${caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : ''}
+    ${objectHtml}
+  </figure>`;
 }
 
 function getFirstNWords(text: string, n: number): string {

@@ -290,7 +290,9 @@
 }
 
 .pdf-section-two-col p,
-.pdf-section-full p {
+.pdf-section-full p,
+.pdf-two-column-flow p,
+.pdf-full-width-object p {
   color: #000000;
   font-size: 12px;
   line-height: 1.5;
@@ -328,11 +330,29 @@
   margin-bottom: 10px;
 }
 
-/* 2-column section — uses CSS columns */
-.pdf-section-two-col {
+/* 2-column text flow — continuous until a full-width object interrupts it */
+.pdf-section-two-col,
+.pdf-two-column-flow {
   column-count: 2;
   column-gap: 18px;
   margin-bottom: 10px;
+}
+
+.pdf-full-width-object {
+  display: block;
+  width: 100%;
+  margin: 12px 0 14px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.pdf-full-width-object figcaption {
+  color: #000000;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0 0 6px;
+  text-align: center;
 }
 
 .pdf-section-heading {
@@ -369,7 +389,15 @@
 .pdf-section-two-col h3,
 .pdf-section-two-col h1,
 .pdf-section-two-col h2,
-.pdf-section-two-col h4 {
+.pdf-section-two-col h4,
+.pdf-two-column-flow h3,
+.pdf-two-column-flow h1,
+.pdf-two-column-flow h2,
+.pdf-two-column-flow h4,
+.pdf-full-width-object h3,
+.pdf-full-width-object h1,
+.pdf-full-width-object h2,
+.pdf-full-width-object h4 {
   margin: 0 0 6px !important;
   color: #315985 !important;
   font-size: 13px !important;
@@ -380,7 +408,11 @@
 .pdf-section-full ul,
 .pdf-section-full ol,
 .pdf-section-two-col ul,
-.pdf-section-two-col ol {
+.pdf-section-two-col ol,
+.pdf-two-column-flow ul,
+.pdf-two-column-flow ol,
+.pdf-full-width-object ul,
+.pdf-full-width-object ol {
   margin: 0 0 8px;
   padding-left: 18px;
   color: #000000;
@@ -389,26 +421,37 @@
 }
 
 .pdf-section-full li,
-.pdf-section-two-col li {
+.pdf-section-two-col li,
+.pdf-two-column-flow li,
+.pdf-full-width-object li {
   margin-bottom: 4px;
 }
 
 .pdf-section-full strong,
 .pdf-section-full b,
 .pdf-section-two-col strong,
-.pdf-section-two-col b {
+.pdf-section-two-col b,
+.pdf-two-column-flow strong,
+.pdf-two-column-flow b,
+.pdf-full-width-object strong,
+.pdf-full-width-object b {
   font-weight: 700;
 }
 
 .pdf-section-full em,
 .pdf-section-full i,
 .pdf-section-two-col em,
-.pdf-section-two-col i {
+.pdf-section-two-col i,
+.pdf-two-column-flow em,
+.pdf-two-column-flow i,
+.pdf-full-width-object em,
+.pdf-full-width-object i {
   font-style: italic;
 }
 
 .pdf-section-full table,
-.pdf-section-two-col table {
+.pdf-section-two-col table,
+.pdf-full-width-object table {
   width: 100%;
   border-collapse: collapse;
   margin: 14px 0;
@@ -422,7 +465,13 @@
 }
 
 .pdf-content-section th,
-.pdf-content-section td {
+.pdf-content-section td,
+.pdf-section-full th,
+.pdf-section-full td,
+.pdf-section-two-col th,
+.pdf-section-two-col td,
+.pdf-full-width-object th,
+.pdf-full-width-object td {
   border: 1px solid #000000;
   padding: 3px 5px;
   text-align: left;
@@ -431,12 +480,18 @@
   word-break: break-word;
 }
 
-.pdf-content-section th {
+.pdf-content-section th,
+.pdf-section-full th,
+.pdf-section-two-col th,
+.pdf-full-width-object th {
   font-weight: 700;
   background: #f4f7f5;
 }
 
-.pdf-content-section img {
+.pdf-content-section img,
+.pdf-section-full img,
+.pdf-section-two-col img,
+.pdf-full-width-object img {
   column-span: all;
   max-width: 100%;
   height: auto;
