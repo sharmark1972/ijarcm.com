@@ -49,5 +49,6 @@ export interface ResearchPaperDraft {
   issueId?: string;
   category: string;
   similarityScore: number;
+  bodyColumnMode: 'two-column' | 'single-column';
   sections: ResearchSection[];
 }

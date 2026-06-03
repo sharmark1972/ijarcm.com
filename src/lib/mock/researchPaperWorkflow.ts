@@ -74,6 +74,7 @@ export const sampleDrafts: Record<ResearchSampleKey, ResearchPaperDraft> = {
     issueId: 'issue-2026-05',
     doi: '10.32628/demo.2026.001',
     similarityScore: 18,
+    bodyColumnMode: 'two-column',
     sections: [
       section(
         'abstract',
@@ -155,6 +156,7 @@ export const sampleDrafts: Record<ResearchSampleKey, ResearchPaperDraft> = {
     category: 'Education',
     issueId: 'issue-2026-06',
     similarityScore: 12,
+    bodyColumnMode: 'two-column',
     sections: [
       section(
         'abstract',
@@ -237,6 +239,7 @@ export const sampleDrafts: Record<ResearchSampleKey, ResearchPaperDraft> = {
     issueId: 'issue-2026-07',
     doi: '10.32628/demo.2026.002',
     similarityScore: 21,
+    bodyColumnMode: 'two-column',
     sections: [
       section(
         'abstract',

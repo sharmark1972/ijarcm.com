@@ -66,6 +66,7 @@ export interface PreviewPdfData {
   abstract: string;
   keywords: string[];
   doi?: string;
+  bodyColumnMode?: 'two-column' | 'single-column';
   authors: Array<{ name: string; email?: string; affiliation?: string }>;
   sections: Array<{ heading: string; content: string; isFullWidth: boolean }>;
   issue?: { volume: string; issueNumber: string; year: number; publishDate: string } | null;
@@ -159,7 +160,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
         </div>
       </div>
       <main class="pdf-content">
-        ${renderPdfSections(data.sections)}
+        ${renderPdfSections(data.sections, data.bodyColumnMode)}
       </main>
     </article>
   </main>
@@ -304,7 +305,7 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
 
       <!-- Body sections: 2 column — content flows freely -->
       <main class="pdf-content">
-        ${renderPdfSections(draft.sections)}
+        ${renderPdfSections(draft.sections, (draft as any).bodyColumnMode)}
       </main>
 
     </article>
@@ -328,14 +329,16 @@ type PdfContentBlock = {
 
 function renderPdfSections(
   sections: Array<{ heading: string; content: string; isFullWidth?: boolean }>,
+  bodyColumnMode: 'two-column' | 'single-column' = 'two-column',
 ): string {
   const parts: string[] = [];
   let textFlow: string[] = [];
   let textFlowClasses = new Set<string>();
+  const flowClass = bodyColumnMode === 'single-column' ? 'pdf-single-column-flow' : 'pdf-two-column-flow';
 
   const flushTextFlow = () => {
     if (!textFlow.length) return;
-    const className = ['pdf-two-column-flow', ...Array.from(textFlowClasses)].join(' ');
+    const className = [flowClass, ...Array.from(textFlowClasses)].join(' ');
     parts.push(`<div class="${className}">${textFlow.join('\n')}</div>`);
     textFlow = [];
     textFlowClasses = new Set<string>();

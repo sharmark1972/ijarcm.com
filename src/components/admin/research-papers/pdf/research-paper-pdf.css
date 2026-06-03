@@ -292,6 +292,7 @@
 .pdf-section-two-col p,
 .pdf-section-full p,
 .pdf-two-column-flow p,
+.pdf-single-column-flow p,
 .pdf-full-width-object p {
   color: #000000;
   font-size: 12px;
@@ -338,6 +339,12 @@
   margin-bottom: 10px;
 }
 
+.pdf-single-column-flow {
+  column-count: 1;
+  column-gap: 0;
+  margin-bottom: 10px;
+}
+
 .pdf-full-width-object {
   display: block;
   width: 100%;
@@ -375,6 +382,11 @@
   column-gap: 18px;
 }
 
+.pdf-single-column-flow.pdf-references-section {
+  column-count: 1;
+  column-gap: 0;
+}
+
 .pdf-references-section ol,
 .pdf-references-section ul {
   font-size: 10px;
@@ -399,6 +411,10 @@
 .pdf-two-column-flow h1,
 .pdf-two-column-flow h2,
 .pdf-two-column-flow h4,
+.pdf-single-column-flow h3,
+.pdf-single-column-flow h1,
+.pdf-single-column-flow h2,
+.pdf-single-column-flow h4,
 .pdf-full-width-object h3,
 .pdf-full-width-object h1,
 .pdf-full-width-object h2,
@@ -416,6 +432,8 @@
 .pdf-section-two-col ol,
 .pdf-two-column-flow ul,
 .pdf-two-column-flow ol,
+.pdf-single-column-flow ul,
+.pdf-single-column-flow ol,
 .pdf-full-width-object ul,
 .pdf-full-width-object ol {
   margin: 0 0 8px;
@@ -428,6 +446,7 @@
 .pdf-section-full li,
 .pdf-section-two-col li,
 .pdf-two-column-flow li,
+.pdf-single-column-flow li,
 .pdf-full-width-object li {
   margin-bottom: 4px;
 }
@@ -438,6 +457,8 @@
 .pdf-section-two-col b,
 .pdf-two-column-flow strong,
 .pdf-two-column-flow b,
+.pdf-single-column-flow strong,
+.pdf-single-column-flow b,
 .pdf-full-width-object strong,
 .pdf-full-width-object b {
   font-weight: 700;
@@ -449,6 +470,8 @@
 .pdf-section-two-col i,
 .pdf-two-column-flow em,
 .pdf-two-column-flow i,
+.pdf-single-column-flow em,
+.pdf-single-column-flow i,
 .pdf-full-width-object em,
 .pdf-full-width-object i {
   font-style: italic;

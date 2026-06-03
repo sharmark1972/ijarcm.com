@@ -1,5 +1,7 @@
 import type { ResearchPaperStatus } from '@prisma/client';
 
+export type BodyColumnMode = 'two-column' | 'single-column';
+
 export interface ParsedResearchPaper {
   title: string;
   abstract: string;
@@ -25,6 +27,7 @@ export interface ResearchPaperDraftUpdateInput {
   keywords?: string[];
   doi?: string | null;
   issueId?: string | null;
+  bodyColumnMode?: BodyColumnMode | null;
   status?: ResearchPaperStatus;
   authors?: Array<{
     id?: string;

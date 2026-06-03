@@ -135,6 +135,7 @@ model ResearchPaperDraft {
   sourceFileName     String?                @map("source_file_name") @db.VarChar(255)
   sourceFileSize     Int?                   @map("source_file_size")
   extractedText      String?                @map("extracted_text") @db.LongText
+  bodyColumnMode     String                 @default("two-column") @map("body_column_mode") @db.VarChar(20)
   pdfPath            String?                @map("pdf_path") @db.VarChar(500)
   previewPdfPath     String?                @map("preview_pdf_path") @db.VarChar(500)
   status             ResearchPaperStatus    @default(DRAFT)

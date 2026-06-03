@@ -44,6 +44,7 @@ interface BackendDraft {
   keywords: string[] | null;
   doi: string | null;
   issueId: string | null;
+  bodyColumnMode?: 'two-column' | 'single-column' | null;
   sourceFileName: string | null;
   sourceFileSize: number | null;
   authors: Array<{
@@ -76,6 +77,7 @@ function blankDraft(): ResearchPaperDraft {
     detectedMode: 'implementation',
     confidence: 0,
     similarityScore: 0,
+    bodyColumnMode: 'two-column',
     sections: [
       { id: 'abstract', heading: 'Abstract', original: '', cleaned: '', notes: [], status: 'missing', isFullWidth: true },
     ],
@@ -187,6 +189,7 @@ export default function NewResearchPaperPage() {
           authors,
           doi: paper.doi || '',
           category: paper.category || '',
+          bodyColumnMode: 'two-column',
           sections: [
             { id: 'abstract', heading: 'Abstract', original: paper.abstract || '', cleaned: paper.abstract || '', notes: [], status: 'complete', isFullWidth: true },
           ],
@@ -278,6 +281,7 @@ export default function NewResearchPaperPage() {
     title: string;
     abstract: string;
     keywords: string[];
+    bodyColumnMode?: 'two-column' | 'single-column' | null;
     authors: Array<{ name: string; email: string; affiliation: string; isCorresponding: boolean; authorOrder: number }>;
     sections: Array<{ heading: string; content: string; isFullWidth: boolean }>;
     sourceFileName: string;
@@ -314,6 +318,7 @@ export default function NewResearchPaperPage() {
       detectedMode: 'implementation',
       confidence: 0,
       similarityScore: 0,
+      bodyColumnMode: extractedData.bodyColumnMode === 'single-column' ? 'single-column' : 'two-column',
       sections: mappedSections,
     });
     setActiveSectionId(mappedSections[0]?.id || 'section-0');
@@ -408,6 +413,7 @@ export default function NewResearchPaperPage() {
     keywords: draft.keywords,
     doi: draft.doi || null,
     issueId: issueId || null,
+    bodyColumnMode: draft.bodyColumnMode,
     authors: draft.authors
       .map((author) => ({
         name: author.name.trim(),
@@ -572,6 +578,7 @@ export default function NewResearchPaperPage() {
             email: a.email || undefined,
             affiliation: (a as any).affiliation || undefined,
           })),
+          bodyColumnMode: draft.bodyColumnMode,
           sections: draft.sections.map((s) => ({
             heading: s.heading,
             content: s.cleaned,
@@ -627,6 +634,7 @@ export default function NewResearchPaperPage() {
           keywords: draft.keywords,
           doi: draft.doi || undefined,
           authors: draft.authors.map((a) => ({ name: a.name, email: a.email || undefined, affiliation: (a as any).affiliation || undefined })),
+          bodyColumnMode: draft.bodyColumnMode,
           sections: draft.sections.map((s) => ({ heading: s.heading, content: s.cleaned, isFullWidth: s.isFullWidth ?? true })),
           issue: issueData,
         }),
@@ -1016,10 +1024,32 @@ export default function NewResearchPaperPage() {
                   <h2 className="text-lg font-semibold text-slate-950">Paper Sections</h2>
                   <p className="text-sm text-slate-500">Click a section in the outline to jump to it.</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={addSection}>
-                  <Plus className="h-4 w-4" />
-                  Add section
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={draft.bodyColumnMode === 'two-column' ? 'default' : 'ghost'}
+                      className={`h-8 px-3 text-xs ${draft.bodyColumnMode === 'two-column' ? 'bg-slate-900 text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900'}`}
+                      onClick={() => setDraft((prev) => ({ ...prev, bodyColumnMode: 'two-column' }))}
+                    >
+                      2 Column
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={draft.bodyColumnMode === 'single-column' ? 'default' : 'ghost'}
+                      className={`h-8 px-3 text-xs ${draft.bodyColumnMode === 'single-column' ? 'bg-slate-900 text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900'}`}
+                      onClick={() => setDraft((prev) => ({ ...prev, bodyColumnMode: 'single-column' }))}
+                    >
+                      1 Column
+                    </Button>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={addSection}>
+                    <Plus className="h-4 w-4" />
+                    Add section
+                  </Button>
+                </div>
               </div>
 
               <div className="grid md:grid-cols-[260px_1fr]" style={{ minHeight: '600px' }}>

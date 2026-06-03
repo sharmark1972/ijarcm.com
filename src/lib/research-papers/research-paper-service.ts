@@ -181,6 +181,8 @@ export async function updateResearchPaperDraft(id: string, input: ResearchPaperD
   const existing = await prisma.researchPaperDraft.findUnique({ where: { id } });
   if (!existing) throw new Error('Research paper draft not found.');
 
+  const bodyColumnMode = normalizeBodyColumnMode(input.bodyColumnMode);
+
   await prisma.researchPaperDraft.update({
     where: { id },
     data: {
@@ -190,8 +192,9 @@ export async function updateResearchPaperDraft(id: string, input: ResearchPaperD
       keywords: input.keywords === undefined ? undefined : input.keywords,
       doi: input.doi === undefined ? undefined : input.doi || null,
       issueId: input.issueId === undefined ? undefined : input.issueId || null,
+      bodyColumnMode: input.bodyColumnMode === undefined ? undefined : bodyColumnMode,
       status: input.status || ResearchPaperStatus.EDITING,
-    },
+    } as any,
   });
 
   if (input.authors) {
@@ -350,4 +353,8 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function normalizeBodyColumnMode(value: unknown) {
+  return value === 'single-column' ? 'single-column' : 'two-column';
 }
