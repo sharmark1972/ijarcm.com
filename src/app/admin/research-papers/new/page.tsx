@@ -1079,25 +1079,6 @@ export default function NewResearchPaperPage() {
                           </div>
                           {isActive && (
                             <div className="flex items-center gap-2">
-                              <Select
-                                value={section.isFullWidth ? 'full' : '2col'}
-                                onValueChange={(value) =>
-                                  setDraft((prev) => ({
-                                    ...prev,
-                                    sections: prev.sections.map((s) =>
-                                      s.id === section.id ? { ...s, isFullWidth: value === 'full' } : s
-                                    ),
-                                  }))
-                                }
-                              >
-                                <SelectTrigger className="h-8 w-36 text-xs bg-white" onClick={(e) => e.stopPropagation()}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="full">1-column</SelectItem>
-                                  <SelectItem value="2col">2-column</SelectItem>
-                                </SelectContent>
-                              </Select>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-red-500"
                                 onClick={(e) => { e.stopPropagation(); setTimeout(removeActiveSection, 0); }}
                                 disabled={draft.sections.length <= 1}

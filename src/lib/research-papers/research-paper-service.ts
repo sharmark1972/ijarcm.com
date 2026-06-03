@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import {
   extractStructuredDataFromDocx,
 } from './docx-extractor';
-import { tryGeminiOnly, tryZaiOnly, getLayoutDecisions } from './gemini-extractor';
+import { tryGeminiOnly, tryZaiOnly } from './gemini-extractor';
 import {
   removeStoredResearchPaperFile,
   validateResearchPaperFile,
@@ -11,7 +11,6 @@ import {
 import { validateDraftUpdate, validatePublishReady } from './validation';
 import type { ResearchPaperDraftUpdateInput } from './types';
 import { generateResearchPaperPdf } from './pdf-service';
-import { analyzeSectionLayout } from './layout-analyzer';
 
 const includeDraftRelations = {
   authors: { orderBy: { authorOrder: 'asc' as const } },
@@ -97,7 +96,12 @@ export async function createResearchPaperDraftFromUpload(
     : structured.authors;
 
   const sanitizedKeywords = keywords.filter((k) => typeof k === 'string');
-  const sectionsWithLayout = await buildSectionsWithLayout(structured.sections);
+  const sectionsForDraft = structured.sections.map((section, index) => ({
+    heading: section.heading ? section.heading.trim() : 'Untitled Section',
+    content: section.content ? section.content.trim() : '',
+    sectionOrder: index,
+    isFullWidth: true,
+  }));
 
   return {
     extractedData: {
@@ -111,7 +115,7 @@ export async function createResearchPaperDraftFromUpload(
         isCorresponding: Boolean(author.isCorresponding),
         authorOrder: index,
       })),
-      sections: sectionsWithLayout,
+      sections: sectionsForDraft,
       sourceFileName: file.name,
       sourceFileSize: file.size,
     },
@@ -346,37 +350,4 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
-}
-
-async function buildSectionsWithLayout(
-  sections: Array<{ heading: string; content: string }>
-) {
-  // Try AI layout decisions first
-  const aiLayouts = await getLayoutDecisions(sections);
-
-  return sections.map((section, index) => {
-    const heading = section.heading ? section.heading.trim() : 'Untitled Section';
-    const content = section.content ? section.content.trim() : '';
-
-    let isFullWidth: boolean;
-
-    if (aiLayouts) {
-      // Match AI decision by heading
-      const aiDecision = aiLayouts.find(
-        (l) => l.heading.toLowerCase().trim() === heading.toLowerCase().trim()
-      ) || aiLayouts[index];
-
-      isFullWidth = aiDecision ? aiDecision.layout === 'full-width' : analyzeSectionLayout(heading, content);
-    } else {
-      // Fallback to rule-based
-      isFullWidth = analyzeSectionLayout(heading, content);
-    }
-
-    return {
-      heading,
-      content,
-      sectionOrder: index,
-      isFullWidth,
-    };
-  });
 }
