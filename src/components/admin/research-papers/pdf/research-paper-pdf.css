@@ -370,6 +370,11 @@
   padding-top: 12px;
 }
 
+.pdf-two-column-flow.pdf-references-section {
+  column-count: 2;
+  column-gap: 18px;
+}
+
 .pdf-references-section ol,
 .pdf-references-section ul {
   font-size: 10px;
@@ -500,6 +505,12 @@
   break-inside: avoid;
   page-break-inside: avoid;
   break-before: avoid;
+}
+
+.pdf-full-width-object img {
+  max-height: 190mm;
+  width: auto;
+  object-fit: contain;
 }
 
 .pdf-running-header {

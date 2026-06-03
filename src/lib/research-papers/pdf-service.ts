@@ -331,11 +331,14 @@ function renderPdfSections(
 ): string {
   const parts: string[] = [];
   let textFlow: string[] = [];
+  let textFlowClasses = new Set<string>();
 
   const flushTextFlow = () => {
     if (!textFlow.length) return;
-    parts.push(`<div class="pdf-two-column-flow">${textFlow.join('\n')}</div>`);
+    const className = ['pdf-two-column-flow', ...Array.from(textFlowClasses)].join(' ');
+    parts.push(`<div class="${className}">${textFlow.join('\n')}</div>`);
     textFlow = [];
+    textFlowClasses = new Set<string>();
   };
 
   for (const section of sections) {
@@ -345,11 +348,7 @@ function renderPdfSections(
 
     if (isReferences) {
       flushTextFlow();
-      parts.push(`<div class="pdf-section-full pdf-references-section">
-        <h3 class="pdf-section-heading">${escapeHtml(heading)}</h3>
-        ${content}
-      </div>`);
-      continue;
+      textFlowClasses.add('pdf-references-section');
     }
 
     const blocks = splitPdfContentBlocks(content);
