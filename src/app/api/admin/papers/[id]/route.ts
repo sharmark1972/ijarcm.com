@@ -59,6 +59,7 @@ export async function PATCH(
   const doi = formData.get('doi') as string | null;
   const paperType = formData.get('paperType') as string | null;
   const file = formData.get('file') as File | null;
+  const sourceFile = formData.get('sourceFile') as File | null;
 
   if (!title || !abstract || !category || !status) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -80,6 +81,30 @@ export async function PATCH(
     );
   }
 
+  const maxSize = 10 * 1024 * 1024;
+  if (sourceFile && sourceFile.size > maxSize) {
+    return NextResponse.json({ error: 'Source DOCX file size must be less than 10MB' }, { status: 400 });
+  }
+
+  if (sourceFile && !sourceFile.type.includes('msword') && !sourceFile.type.includes('wordprocessingml')) {
+    return NextResponse.json({ error: 'Only DOC and DOCX source files are allowed' }, { status: 400 });
+  }
+
+  let sourceFilePath = existing.sourceFilePath;
+  let sourceFileName = existing.sourceFileName;
+  let sourceFileSize = existing.sourceFileSize;
+  if (sourceFile && sourceFile.size > 0) {
+    const sourceExtension = sourceFile.name.split('.').pop() || 'docx';
+    sourceFilePath = await uploadToR2(
+      Buffer.from(await sourceFile.arrayBuffer()),
+      `paper_source_${Date.now()}.${sourceExtension}`,
+      'paper-sources',
+      sourceFile.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    );
+    sourceFileName = sourceFile.name;
+    sourceFileSize = sourceFile.size;
+  }
+
   // Validate issue
   if (issueId) {
     const issue = await prisma.issue.findUnique({ where: { id: issueId } });
@@ -96,6 +121,9 @@ export async function PATCH(
       category,
       status: status as any,
       filePath,
+      sourceFilePath,
+      sourceFileName,
+      sourceFileSize,
       issueId: issueId || null,
       doi: doi || null,
       publishedAt: status === 'PUBLISHED' ? (existing.publishedAt || new Date()) : existing.publishedAt,

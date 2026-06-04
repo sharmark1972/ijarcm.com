@@ -82,6 +82,9 @@ model Paper {
   abstract          String                 @db.Text
   keywords          String?                @db.Text
   filePath          String                 @map("file_path") @db.VarChar(500)
+  sourceFilePath    String?                @map("source_file_path") @db.VarChar(500)
+  sourceFileName    String?                @map("source_file_name") @db.VarChar(255)
+  sourceFileSize    Int?                   @map("source_file_size")
   status            PaperStatus            @default(SUBMITTED)
   category          String?                @db.VarChar(100)
   submittedAt       DateTime               @default(now()) @map("submitted_at")

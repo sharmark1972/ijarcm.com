@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import {
   extractStructuredDataFromDocx,
 } from './docx-extractor';
+import type { ExtractedStructuredData } from './docx-extractor';
 import { tryGeminiOnly, tryZaiOnly } from './gemini-extractor';
 import {
   removeStoredResearchPaperFile,
@@ -44,43 +45,7 @@ export async function createResearchPaperDraftFromUpload(
     ? structured.rawHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     : '';
 
-  type AiResult = Awaited<ReturnType<typeof tryGeminiOnly>>;
-  let aiResult: AiResult = null;
-  let usedStep: ExtractionStep = 'basic';
-
-  if (extractionMode === 'basic') {
-    // Without AI — sirf basic extraction
-    onStep('basic');
-    usedStep = 'basic';
-  } else if (extractionMode === 'gemini') {
-    // Sirf Gemini
-    onStep('gemini');
-    aiResult = await tryGeminiOnly(plainText);
-    usedStep = aiResult ? 'gemini' : 'basic';
-    if (!aiResult) onStep('basic');
-  } else if (extractionMode === 'zai') {
-    // Sirf ZAI
-    onStep('zai');
-    aiResult = await tryZaiOnly(plainText);
-    usedStep = aiResult ? 'zai' : 'basic';
-    if (!aiResult) onStep('basic');
-  } else {
-    // Auto — Gemini → ZAI → basic
-    onStep('gemini');
-    aiResult = await tryGeminiOnly(plainText);
-
-    if (!aiResult) {
-      onStep('zai');
-      aiResult = await tryZaiOnly(plainText);
-    }
-
-    if (!aiResult) {
-      onStep('basic');
-      usedStep = 'basic';
-    } else {
-      usedStep = aiResult ? 'gemini' : 'zai';
-    }
-  }
+  const { aiResult, usedStep } = await runAiExtraction(plainText, onStep, extractionMode);
 
   const title = aiResult?.title || structured.title;
   const abstract = aiResult?.abstract || structured.abstract;
@@ -121,6 +86,104 @@ export async function createResearchPaperDraftFromUpload(
     },
     extractionMethod: usedStep,
   };
+}
+
+export async function enhanceExtractedResearchPaperData(
+  structured: ExtractedStructuredData,
+  sourceFileName: string,
+  sourceFileSize: number,
+  onStep: (step: ExtractionStep) => void,
+  extractionMode: ExtractionMode = 'auto',
+) {
+  const plainText = structured.rawHtml
+    ? structured.rawHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+
+  const { aiResult, usedStep } = await runAiExtraction(plainText, onStep, extractionMode);
+
+  const title = aiResult?.title || structured.title;
+  const abstract = aiResult?.abstract || structured.abstract;
+  const keywords = aiResult?.keywords?.length ? aiResult.keywords : structured.keywords;
+  const affiliation = aiResult?.affiliation || structured.affiliation;
+  const authors = aiResult?.authors?.length
+    ? aiResult.authors.map((a) => ({
+        name: a.name,
+        email: aiResult?.email || undefined,
+        affiliation: affiliation || undefined,
+        isCorresponding: a.isCorresponding,
+      }))
+    : structured.authors;
+
+  const sanitizedKeywords = keywords.filter((k) => typeof k === 'string');
+  const sectionsForDraft = structured.sections.map((section, index) => ({
+    heading: section.heading ? section.heading.trim() : 'Untitled Section',
+    content: section.content ? section.content.trim() : '',
+    sectionOrder: index,
+    isFullWidth: true,
+  }));
+
+  return {
+    extractedData: {
+      title: title ? title.trim() : '',
+      abstract: abstract ? abstract.trim() : '',
+      keywords: sanitizedKeywords,
+      authors: authors.map((author, index) => ({
+        name: author.name.trim(),
+        email: author.email ? author.email.trim() : '',
+        affiliation: author.affiliation ? author.affiliation.trim() : '',
+        isCorresponding: Boolean(author.isCorresponding),
+        authorOrder: index,
+      })),
+      sections: sectionsForDraft,
+      sourceFileName,
+      sourceFileSize,
+    },
+    extractionMethod: usedStep,
+  };
+}
+
+async function runAiExtraction(
+  plainText: string,
+  onStep: (step: ExtractionStep) => void,
+  extractionMode: ExtractionMode,
+) {
+  type AiResult = Awaited<ReturnType<typeof tryGeminiOnly>>;
+  let aiResult: AiResult = null;
+  let usedStep: ExtractionStep = 'basic';
+
+  if (extractionMode === 'basic') {
+    onStep('basic');
+    return { aiResult, usedStep };
+  }
+
+  if (extractionMode === 'gemini') {
+    onStep('gemini');
+    aiResult = await tryGeminiOnly(plainText);
+    usedStep = aiResult ? 'gemini' : 'basic';
+    if (!aiResult) onStep('basic');
+    return { aiResult, usedStep };
+  }
+
+  if (extractionMode === 'zai') {
+    onStep('zai');
+    aiResult = await tryZaiOnly(plainText);
+    usedStep = aiResult ? 'zai' : 'basic';
+    if (!aiResult) onStep('basic');
+    return { aiResult, usedStep };
+  }
+
+  onStep('gemini');
+  aiResult = await tryGeminiOnly(plainText);
+  usedStep = aiResult ? 'gemini' : 'basic';
+
+  if (!aiResult) {
+    onStep('zai');
+    aiResult = await tryZaiOnly(plainText);
+    usedStep = aiResult ? 'zai' : 'basic';
+  }
+
+  if (!aiResult) onStep('basic');
+  return { aiResult, usedStep };
 }
 
 

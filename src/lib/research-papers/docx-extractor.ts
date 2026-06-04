@@ -1,4 +1,3 @@
-import { readFile } from 'fs/promises';
 import mammoth from 'mammoth';
 
 export interface ExtractedDocumentHtml {
@@ -25,13 +24,8 @@ export interface ExtractedStructuredData {
   warnings: string[];
 }
 
-export async function extractDocumentHtml(filePath: string, extension: string): Promise<ExtractedDocumentHtml> {
-  const buffer = await readFile(filePath);
-  return extractDocumentHtmlFromBuffer(buffer, extension);
-}
-
 export async function extractDocumentHtmlFromBuffer(
-  buffer: Buffer,
+  buffer: Buffer | ArrayBuffer,
   extension: string,
 ): Promise<ExtractedDocumentHtml> {
   if (extension !== '.docx') {
@@ -42,7 +36,7 @@ export async function extractDocumentHtmlFromBuffer(
   }
 
   const result = await mammoth.convertToHtml(
-    { buffer },
+    getMammothInput(buffer),
     {
       styleMap: [
         "p[style-name='Heading 1'] => h1:fresh",
@@ -70,7 +64,7 @@ export async function extractDocumentHtmlFromBuffer(
 }
 
 export async function extractStructuredDataFromDocx(
-  buffer: Buffer,
+  buffer: Buffer | ArrayBuffer,
   extension: string,
 ): Promise<ExtractedStructuredData> {
   if (extension !== '.docx') {
@@ -78,7 +72,7 @@ export async function extractStructuredDataFromDocx(
   }
 
   const result = await mammoth.convertToHtml(
-    { buffer },
+    getMammothInput(buffer),
     {
       styleMap: [
         "p[style-name='Heading 1'] => h1:fresh",
@@ -109,6 +103,10 @@ export async function extractStructuredDataFromDocx(
     rawHtml: html,
     warnings,
   };
+}
+
+function getMammothInput(buffer: Buffer | ArrayBuffer) {
+  return buffer instanceof ArrayBuffer ? { arrayBuffer: buffer } : { buffer };
 }
 
 // ─── HTML Parsing ────────────────────────────────────────────────────────────

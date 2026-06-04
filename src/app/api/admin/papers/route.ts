@@ -218,6 +218,7 @@ export async function POST(request: NextRequest) {
     const authorsData = formData.get('authors') as string;
     const issueId = formData.get('issueId') as string | null;
     const file = formData.get('file') as File;
+    const sourceFile = formData.get('sourceFile') as File | null;
     const generatePDF = formData.get('generatePDF') === 'true';
     const introduction = formData.get('introduction') as string | null;
     const literatureReview = formData.get('literatureReview') as string | null;
@@ -256,6 +257,20 @@ export async function POST(request: NextRequest) {
     if (file && file.size > maxSize) {
       return NextResponse.json(
         { error: 'File size must be less than 10MB' },
+        { status: 400 }
+      );
+    }
+
+    if (sourceFile && sourceFile.size > maxSize) {
+      return NextResponse.json(
+        { error: 'Source DOCX file size must be less than 10MB' },
+        { status: 400 }
+      );
+    }
+
+    if (sourceFile && !sourceFile.type.includes('msword') && !sourceFile.type.includes('wordprocessingml')) {
+      return NextResponse.json(
+        { error: 'Only DOC and DOCX source files are allowed' },
         { status: 400 }
       );
     }
@@ -364,6 +379,25 @@ export async function POST(request: NextRequest) {
       relativeFilePath = await uploadToR2(buffer, fileName, 'papers', file.type || 'application/octet-stream');
     }
 
+    let sourceFilePath: string | null = null;
+    let sourceFileName: string | null = null;
+    let sourceFileSize: number | null = null;
+
+    if (sourceFile) {
+      const sourceBytes = await sourceFile.arrayBuffer();
+      const sourceBuffer = Buffer.from(sourceBytes);
+      const sourceExtension = sourceFile.name.split('.').pop() || 'docx';
+      const storedSourceName = `paper_source_${Date.now()}.${sourceExtension}`;
+      sourceFilePath = await uploadToR2(
+        sourceBuffer,
+        storedSourceName,
+        'paper-sources',
+        sourceFile.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      );
+      sourceFileName = sourceFile.name;
+      sourceFileSize = sourceFile.size;
+    }
+
     // Validate issue if provided
     if (issueId) {
       const issue = await prisma.issue.findUnique({
@@ -394,6 +428,9 @@ export async function POST(request: NextRequest) {
         category,
         status: status as 'SUBMITTED' | 'UNDER_REVIEW' | 'REVISION_REQUIRED' | 'ACCEPTED' | 'PUBLISHED' | 'REJECTED',
         filePath: relativeFilePath,
+        sourceFilePath,
+        sourceFileName,
+        sourceFileSize,
         submitterId: session.user.id,
         issueId: issueId || null,
         publishedAt: status === 'PUBLISHED' ? new Date() : null,
