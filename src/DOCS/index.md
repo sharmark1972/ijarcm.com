@@ -1,63 +1,109 @@
-# IJARCM — DOCS Index
+# IJARCM - DOCS Index
 
-> This index is for AI agents. Read this file first to find relevant files without scanning the entire codebase.
-> Each section lists what the file does and which source files are involved.
-> Last updated: 2026-05-31
+> This index is for AI agents. Read this first before scanning source files.
+> It maps the current working systems, the important files, and the main caveats.
+> Last updated: 2026-06-04
 
 ---
 
-## How to Use This Index
+## How To Use This Index
 
-1. **Start here** — find the system you need in the sections below
-2. **Go to the audit file** — each system has a link to its full audit
-3. **Read only the source file you need** — don't scan the whole `src/` directory
-4. **After making changes** — update the relevant DOCS file
+1. Start with the relevant system section below.
+2. Read only the source files that are listed for that system.
+3. After code changes, update this index and, if needed, `Code audit.md`.
 
 ---
 
 ## Research Paper Studio
 
-**Full details:** [Research Paper audit.md](./Research%20Paper%20audit.md)
+### Current Working Flow
+
+- DOCX is read locally in the browser from the selected file.
+- Mammoth converts DOCX to HTML/structured data on the client.
+- Browser sends only structured data to `/api/admin/research-papers/ai-extract` for AI enhancement.
+- No DB write and no R2 write happen during extraction.
+- Preview and download PDF use the temporary server PDF endpoint.
+- Final submit saves the selected PDF to R2 and archives the original DOCX on submit only.
+- PDF output uses the current block-based layout rules:
+  - text flows in 2-column or 1-column mode depending on paper setting
+  - tables and images stay full width
+  - headings that start an image/table section stay full width
+  - references remain 2-column unless the paper is set to 1-column
+  - text in PDF is justified
 
 ### Files Map
 
 | What you need | File |
-|---------------|------|
-| Types / interfaces | `src/lib/research-papers/types.ts` |
-| File validation + R2 upload | `src/lib/research-papers/storage.ts` |
-| Text parser (basic fallback) | `src/lib/research-papers/parser.ts` |
-| DOCX → HTML extraction | `src/lib/research-papers/docx-extractor.ts` |
-| AI metadata + layout (Gemini/ZAI) | `src/lib/research-papers/gemini-extractor.ts` |
-| Rule-based layout fallback | `src/lib/research-papers/layout-analyzer.ts` |
-| Table column counter | `src/lib/research-papers/table-analyzer.ts` |
-| Input validation (title/DOI/publish) | `src/lib/research-papers/validation.ts` |
-| Main service (all DB ops) | `src/lib/research-papers/research-paper-service.ts` |
-| PDF generation (Playwright) | `src/lib/research-papers/pdf-service.ts` |
-| PDF CSS | `src/components/admin/research-papers/pdf/research-paper-pdf.css` |
-| TipTap section editor | `src/components/admin/research-papers/SectionEditor.tsx` |
-| Admin editor page (UI) | `src/app/admin/research-papers/new/page.tsx` |
-| Admin list page | `src/app/admin/research-papers/page.tsx` |
-| Upload API (SSE streaming) | `src/app/api/admin/research-papers/upload/route.ts` |
-| Fetch / update / delete draft | `src/app/api/admin/research-papers/[id]/route.ts` |
-| Generate preview PDF | `src/app/api/admin/research-papers/[id]/generate-preview-pdf/route.ts` |
-| Publish paper | `src/app/api/admin/research-papers/[id]/publish/route.ts` |
-| Serve published PDF | `src/app/api/admin/research-papers/[id]/pdf/route.ts` |
+|---|---|
+| Research paper workflow types | `src/types/research-paper-workflow.ts` |
+| Draft DB types and validation inputs | `src/lib/research-papers/types.ts` |
+| Draft validation rules | `src/lib/research-papers/validation.ts` |
+| DOCX parsing and structured extraction | `src/lib/research-papers/docx-extractor.ts` |
+| AI enhancement helpers | `src/lib/research-papers/research-paper-service.ts` |
+| Gemini / ZAI metadata extraction | `src/lib/research-papers/gemini-extractor.ts` |
+| PDF HTML generation and Playwright render | `src/lib/research-papers/pdf-service.ts` |
+| PDF CSS rules | `src/components/admin/research-papers/pdf/research-paper-pdf.css` |
+| Section editor UI | `src/components/admin/research-papers/SectionEditor.tsx` |
+| Admin research paper editor | `src/app/admin/research-papers/new/page.tsx` |
+| Admin research paper list | `src/app/admin/research-papers/page.tsx` |
+| Admin paper submit / edit target | `src/app/api/admin/papers/route.ts`, `src/app/api/admin/papers/[id]/route.ts` |
+| Local extraction compatibility endpoint | `src/app/api/admin/research-papers/ai-extract/route.ts` |
+| Research paper draft API | `src/app/api/admin/research-papers/route.ts`, `src/app/api/admin/research-papers/[id]/route.ts` |
+| Research paper PDF preview API | `src/app/api/admin/research-papers/preview-pdf/route.ts` |
+| Legacy research paper upload API | `src/app/api/admin/research-papers/upload/route.ts` |
+| Publish draft API | `src/app/api/admin/research-papers/[id]/publish/route.ts` |
+| Serve draft PDF / preview PDF | `src/app/api/admin/research-papers/[id]/pdf/route.ts` |
 
 ### Quick Facts
 
-- **Workflow:** DOCX upload → SSE stream → AI extract → admin edit → preview PDF → publish
-- **DB models:** `ResearchPaperDraft`, `ResearchPaperAuthor`, `ResearchPaperSection`
-- **Packages:** `mammoth` (DOCX), `playwright` (PDF), `@google/generative-ai` (Gemini), `aws-sdk` (R2)
-- **Extraction chain:** mammoth (HTML) → Gemini metadata → ZAI fallback → basic regex fallback
-- **Layout chain:** Gemini AI layout → ZAI fallback → `layout-analyzer.ts` rule-based
-- **AI models:** `gemini-2.5-flash-lite` (Gemini), `GLM-4.7-Flash` (ZAI via OpenAI-compatible API)
-- **SSE:** Upload streams real-time step status (gemini/zai/basic) to frontend
-- **Abstract:** 148 words max — enforced in UI counter + AI prompt
-- **PDF page 1:** Float layout — `.pdf-article-info` 38% left + `.pdf-abstract-panel` 62% right
-- **PDF body:** Per-section column control via `isFullWidth` — `pdf-section-full` or `pdf-section-two-col`
-- **Layout rules:** Table/image → full-width; plain text → 2-col; odd last 2-col → full-width; Abstract/References/Conclusion → always full-width
-- **Storage:** Source DOCX files in Cloudflare R2 under `research-papers/sources/{uuid}/`
-- **Known issues:** TipTap underline warning, Gemini quota, PDF blank page (CSS), abstract double-render
+- Local-first extraction: the browser reads DOCX first, then only extracted JSON goes to AI.
+- No extraction-time persistence: extraction does not save to DB or R2 anymore.
+- Submit-time archival: source DOCX is uploaded to R2 only when the paper is submitted or updated in the admin paper submit flow.
+- PDF preview is temporary: preview uses the server render endpoint and returns a blob; it is not saved as a permanent draft asset.
+- Final paper storage: the selected PDF is stored via R2 in the admin papers submit route.
+- Body column setting: paper-level `bodyColumnMode` controls `two-column` vs `single-column` body flow.
+- Section-level layout toggle: `isFullWidth` still exists and is used for PDF rendering.
+- PDF layout rule: text blocks are justified; tables and images remain full width; references stay 2-column by default.
+- The old per-section extraction-time layout analyzer was removed from the active flow.
+
+### AI Extraction — Prompt & Provider Details
+
+**File:** `src/lib/research-papers/gemini-extractor.ts`
+
+**How it works:**
+- The **full extracted plain text** is sent to the AI (no character limit).
+- Two providers are tried (in order based on which key is present in env):
+  - **Gemini** — model `gemini-2.5-flash-lite`, env var `GEMINI_API_KEY`
+  - **ZAI** — model `GLM-4.7-Flash`, API `https://api.z.ai/api/paas/v4/chat/completions`, env var `ZAI_API_KEY`
+- Metadata extraction uses `METADATA_PROMPT`; section body rewriting uses `DOCUMENT_REWRITE_PROMPT` — both constants in that file.
+
+**Fields extracted by the prompt:**
+
+| Field | Rule |
+|---|---|
+| `title` | Clean title, no surrounding quotes |
+| `authors` | Array of `{ name, isCorresponding }` — first author = corresponding; labels like (Supervisor) removed |
+| `affiliation` | Full institutional affiliation (dept, university, location) |
+| `email` | Corresponding author email, empty string if not found |
+| `abstract` | **Rewritten** in AI's own words — NOT copied verbatim; max 148 words; enforced in code after parsing |
+| `keywords` | Array of individual keyword strings |
+
+**Abstract rewriting rules (in the prompt):**
+- Rewrite completely — do not copy sentences verbatim
+- Preserve original meaning, findings, methodology, conclusions
+- Max 148 words, no filler phrases
+- Clear, formal, academic English — no robotic/repetitive phrasing
+- Plagiarism-free paraphrase
+
+**Response format:** AI must return a raw JSON object only — no markdown, no explanation. Code strips any wrapping text with a regex before `JSON.parse`.
+
+**Fallback:** If both providers fail or keys are missing, `extractionMethod` is set to `'basic'` and only the DOCX-extracted data is used.
+
+### Known Caveats
+
+- The legacy `/api/admin/research-papers/upload` route still exists for compatibility, but the current editor does not use it.
+- The current PDF preview still depends on Playwright, so generation time is mostly server render time, not browser open time.
+- `.docx` is the supported local extraction path in the current editor flow; `.doc` is treated as unsupported for automatic local extraction.
 
 ---
 
@@ -65,115 +111,86 @@
 
 **Full details:** [Code audit.md](./Code%20audit.md)
 
+### Files Map
+
 | What you need | File |
-|---------------|------|
-| Certificate UI/design/layout | `src/components/Certificate.tsx` |
-| Certificate props/types/templates | `src/types/certificate.ts` |
-| Admin generate certificate form | `src/app/admin/certificates/generate/page.tsx` |
+|---|---|
+| Certificate React component | `src/components/Certificate.tsx` |
+| Certificate types and constants | `src/types/certificate.ts` |
+| Admin generate page | `src/app/admin/certificates/generate/page.tsx` |
 | Admin certificates list | `src/app/admin/certificates/page.tsx` |
-| Sample certificate (homepage preview) | `src/components/SampleCertificate.tsx` |
-| Generate certificate API (create/list) | `src/app/api/certificates/route.ts` |
-| HTML certificate for published papers | `src/app/api/papers/[id]/certificate/route.ts` |
+| Sample certificate preview | `src/components/SampleCertificate.tsx` |
+| Certificate create/list API | `src/app/api/certificates/route.ts` |
+| Published paper certificate HTML | `src/app/api/papers/[id]/certificate/route.ts` |
 
 ### Quick Facts
 
-- **Two systems:** React component (admin/preview) and HTML string (published papers)
-- **Dimensions:** 1123×794px (A4 landscape at 96dpi)
-- **Templates:** `classic` (gold/burgundy), `modern` (navy), `elegant` (emerald)
-- **Certificate number format:** `IJARCM-{year}-{number}`
-- **DB model:** `Certificate` table (Prisma)
-- **Signature asset:** `public/managing-director-signature.png`
-- **Admin sidebar:** Certificate must render outside `max-w-7xl` (sidebar = 256px / w-64)
-- **Hybrid Conference:** Can select existing or create new conference inline during generation
-- **Participation Type:** Dynamic dropdown for Conference certificates (Participation/Presentation/Both)
-- **Compact Layout:** Certificate form fits in 3 rows with 2-column grid
+- Two parallel certificate systems still exist: React component and HTML string generator.
+- The admin generate page supports conference creation inline.
+- The HTML paper certificate route is separate from the React certificate system.
 
 ---
 
 ## Shared Infrastructure
 
-### Auth System
+### Auth
 
 | What you need | File |
-|---------------|------|
-| NextAuth config (credentials provider) | `src/lib/auth.ts` |
-| Auth API route | `src/app/api/auth/[...nextauth]/route.ts` |
+|---|---|
+| NextAuth config | `src/lib/auth.ts` |
+| Auth route | `src/app/api/auth/[...nextauth]/route.ts` |
 | Register | `src/app/api/auth/register/route.ts` |
-| Forgot/reset password | `src/app/api/auth/forgot-password/route.ts`, `reset-password/route.ts` |
-| Session provider wrapper | `src/components/providers/SessionProvider.tsx` |
+| Password reset flow | `src/app/api/auth/forgot-password/route.ts`, `src/app/api/auth/reset-password/route.ts` |
+| Session provider | `src/components/providers/SessionProvider.tsx` |
 
-**Quick facts:**
-- NextAuth with Prisma adapter + credentials (email/password)
-- `bcryptjs` for password hashing
-- Roles: `ADMIN`, `AUTHOR`, `REVIEWER`, `STUDENT` (from Prisma `UserRole` enum)
-- Email must be verified (`isVerified`) before login allowed
-- JWT encode/decode customized
-
----
-
-### File Storage (R2)
+### File Storage
 
 | What you need | File |
-|---------------|------|
-| Core R2 upload/delete | `src/lib/r2-upload.ts` |
-| Research paper file handling | `src/lib/research-papers/storage.ts` |
-
-**Quick facts:**
-- Cloudflare R2 via `aws-sdk` S3-compatible API (`s3ForcePathStyle: true`, `signatureVersion: v4`)
-- Public URL: `CLOUDFLARE_R2_PUBLIC_URL/{folder}/{timestamp}-{filename}`
-- Research paper sources: `research-papers/sources/{uuid}/{filename}`
-- PDFs, covers, certificates also stored in R2
-
----
+|---|---|
+| R2 upload/delete helpers | `src/lib/r2-upload.ts` |
+| Research paper storage helpers | `src/lib/research-papers/storage.ts` |
 
 ### Database
 
 | What you need | File |
-|---------------|------|
+|---|---|
 | Prisma client singleton | `src/lib/prisma.ts` |
-| Schema + all models | `prisma/schema.prisma` |
-
----
+| All models and relations | `prisma/schema.prisma` |
 
 ### Email / SMTP
 
-**Full details:** `SMTP_CONFIGURATION.md` in project root
-
 | What you need | File |
-|---------------|------|
-| SMTP send utility | `src/lib/smtp.ts` |
+|---|---|
+| SMTP helper | `src/lib/smtp.ts` |
 
 ---
 
-## Other Systems (to be documented)
+## Other Systems
 
 | System | Where to look |
-|--------|---------------|
-| Fees/Payment | `FEES_INDEX.md`, `FEES_SYSTEM_GUIDE.md` in project root |
-| Papers / Submission | `src/app/api/papers/submit/route.ts`, `src/app/submit/page.tsx` |
-| Admin papers (old system) | `src/app/admin/papers/`, `src/app/api/admin/papers/` |
+|---|---|
+| Fees / payment | `FEES_INDEX.md`, `FEES_SYSTEM_GUIDE.md` |
+| Submission flow for public users | `src/app/submit/page.tsx`, `src/app/api/papers/submit/route.ts` |
+| Admin papers (old paper management) | `src/app/admin/papers/`, `src/app/api/admin/papers/` |
 | Issues management | `src/app/admin/issues/`, `src/app/api/admin/issues/` |
 | Conferences | `src/app/admin/conferences/`, `src/app/api/admin/conferences/` |
-| Reviews / Peer review | `src/app/api/reviews/`, `src/app/api/admin/reviews/` |
+| Reviews / peer review | `src/app/api/reviews/`, `src/app/api/admin/reviews/` |
 | Analytics | `src/app/admin/analytics/`, `src/app/api/admin/analytics/` |
 | Announcements | `src/app/api/admin/announcements/`, `src/components/AnnouncementsDisplay.tsx` |
-| Animations (festival) | `src/components/animations/`, `src/app/api/admin/animations/` |
-| Chatbot | `src/lib/chatbot/` |
 | SEO | `src/components/admin/SEODashboard.tsx`, `src/app/api/admin/seo/` |
 | Ebooks | `src/app/admin/ebooks/`, `src/app/api/admin/ebooks/` |
-| Article Generator | `src/app/article-generator/`, `src/app/api/article-generator/` |
+| Chatbot | `src/lib/chatbot/` |
 
 ---
 
-## Project Root Files Reference
+## Project Root References
 
 | File | Purpose |
-|------|---------|
-| `FEES_INDEX.md` | Index for fees/payment system docs |
-| `FEES_SYSTEM_GUIDE.md` | Full fees system guide |
-| `SMTP_CONFIGURATION.md` | Email/SMTP setup |
-| `README.md` | General project readme |
-| `QUICK_REFERENCE.md` | General quick reference |
-| `prisma/schema.prisma` | All DB models — read this for data shapes |
-| `src/DOCS/Code audit.md` | Certificate system full audit |
-| `src/DOCS/Research Paper audit.md` | Research paper studio full audit |
+|---|---|
+| `README.md` | General project overview |
+| `QUICK_REFERENCE.md` | Quick general reference |
+| `FEES_INDEX.md` | Fees system doc index |
+| `FEES_SYSTEM_GUIDE.md` | Fees system guide |
+| `SMTP_CONFIGURATION.md` | Email / SMTP setup |
+| `prisma/schema.prisma` | Database schema |
+| `src/DOCS/Code audit.md` | Certificate system audit |

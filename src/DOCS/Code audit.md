@@ -1,3 +1,106 @@
+# Code Audit — IJARCM Systems
+
+> Last updated: 2026-06-04
+> Covers: AI Extraction (Research Papers), Certificate generation
+
+---
+
+# Research Paper AI Extraction — Code Audit
+
+> Scope: AI-based metadata extraction during DOCX upload in admin research paper editor
+
+## Overview
+
+When a DOCX is uploaded in the admin research paper studio, the browser extracts text locally via Mammoth, then sends the first 3000 characters to the server at `/api/admin/research-papers/ai-extract`. The server calls one of two AI providers to extract and rewrite paper metadata.
+
+## Key File
+
+**`src/lib/research-papers/gemini-extractor.ts`**
+
+Contains:
+- `METADATA_PROMPT` — the single prompt used by both providers
+- `tryGeminiOnly(plainText)` — calls Gemini if `GEMINI_API_KEY` is set
+- `tryZaiOnly(plainText)` — calls ZAI if `ZAI_API_KEY` is set
+- `parseMetadataResponse(raw)` — strips non-JSON text, parses, enforces 148-word abstract cap
+
+## Providers
+
+| Provider | Model | Env Var | Endpoint |
+|---|---|---|---|
+| Gemini | `gemini-2.5-flash-lite` | `GEMINI_API_KEY` | Google Generative AI SDK |
+| ZAI | `GLM-4.7-Flash` | `ZAI_API_KEY` | `https://api.z.ai/api/paas/v4/chat/completions` |
+
+Both providers receive the same `METADATA_PROMPT + textSample` as a single user message. Input is capped at `plainText.slice(0, 3000)`.
+
+## The Prompt (`METADATA_PROMPT`)
+
+Single-turn user message. Instructs the model to return **only a raw JSON object** — no markdown, no explanation.
+
+**Fields requested:**
+
+| Field | Notes |
+|---|---|
+| `title` | Remove surrounding quotes if any |
+| `authors` | Array of `{ name: string, isCorresponding: boolean }` — split comma/semicolon lists, strip labels like (Supervisor) (Guide) (Co-author); first author = corresponding |
+| `affiliation` | Full: dept + university + location |
+| `email` | Corresponding author email; empty string if not found |
+| `abstract` | Rewritten — see rules below |
+| `keywords` | Array of strings |
+
+**Abstract rewriting rules — OLD (replaced on 2026-06-04):**
+1. Rewrite completely in AI's own words — do NOT copy verbatim sentences
+2. Preserve original meaning, findings, methodology, conclusions
+3. Max 148 words, no filler phrases
+4. Clear, formal, academic English
+5. Avoid robotic/repetitive/overly passive phrasing
+6. Result must be plagiarism-free paraphrase
+
+**Document + Abstract rewriting rules — NEW (active from 2026-06-04):**
+
+These rules apply to the full document. Rule 10 is abstract-only.
+
+1. Rewrite the entire text in human-like, natural academic English — avoid robotic, repetitive, or overly passive phrasing
+2. Remove all plagiarism — do not copy sentences verbatim
+3. Preserve the original meaning, context, findings, methodology, and conclusions completely
+4. Keep the same word count — do not add or remove content
+5. Do not modify any table content — return tables exactly as received
+6. Do not change section headings
+7. Do not add new information, examples, or explanations
+8. Do not remove any information
+9. Maintain the same structure and flow as the original
+10. **Abstract only:** maximum 148 words, no filler phrases — rewrite completely in own words within this limit
+
+**Code-side enforcement:** After parsing, `parseMetadataResponse` truncates abstract to 148 words if AI exceeded the limit.
+
+## Response Parsing
+
+`parseMetadataResponse` does:
+1. Regex `/{[\s\S]*}/` to extract JSON block (handles thinking tokens, preamble text)
+2. `JSON.parse`
+3. Returns `null` if both `title` and `abstract` are empty
+4. Forces `authors` and `keywords` to arrays if AI returned wrong type
+5. Truncates abstract to 148 words
+
+## Fallback Chain
+
+```
+GEMINI_API_KEY present? → tryGeminiOnly
+  success → extractionMethod: 'gemini'
+  fail    → tryZaiOnly
+
+ZAI_API_KEY present? → tryZaiOnly
+  success → extractionMethod: 'zai'
+  fail    → extractionMethod: 'basic' (DOCX-only data)
+```
+
+## Known Issues / Notes
+
+- If neither API key is set in `.env`, extraction silently falls back to basic (DOCX-parsed) data with no AI rewriting.
+- ZAI uses OpenAI-compatible chat completions format; if ZAI changes API shape, update `data?.choices?.[0]?.message?.content` accessor in `tryZai`.
+- Abstract 148-word limit is enforced both in the prompt and in code — the code truncation is the hard guarantee.
+
+---
+
 # Certificate System — Code Audit
 
 > Last updated: 2026-05-25 (Updated with hybrid conference & participation type)

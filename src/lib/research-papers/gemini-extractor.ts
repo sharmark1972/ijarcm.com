@@ -24,13 +24,13 @@ Fields to extract:
 - authors: Array of author objects with "name" (string) and "isCorresponding" (boolean, first author is corresponding)
 - affiliation: Full institutional affiliation (department, university, location)
 - email: Corresponding author email if found, else empty string
-- abstract: Rewritten abstract, maximum 148 words (see rewriting rules below)
+- abstract: Rewritten abstract (see rewriting rules below)
 - keywords: Array of keywords
 
 Abstract rewriting rules:
 - Rewrite the abstract completely in your own words — do NOT copy sentences verbatim from the paper
 - Preserve the original meaning, research findings, methodology, and conclusions fully
-- Keep it concise: maximum 148 words, no filler phrases
+- Maximum 148 words, no filler phrases
 - Write in clear, formal, academic English that sounds naturally human
 - Avoid robotic, repetitive, or overly passive phrasing
 - Paraphrase naturally so the result is plagiarism-free
@@ -56,18 +56,51 @@ Return ONLY this JSON structure:
 Research paper text:
 `;
 
+// ─── Document Rewrite Prompt ───────────────────────────────────────────────────
+
+const DOCUMENT_REWRITE_PROMPT = `You are a research paper editor. Rewrite the following research paper section text according to these rules:
+
+1. Rewrite the entire text in human-like, natural academic English — avoid robotic, repetitive, or overly passive phrasing
+2. Remove all plagiarism — do not copy sentences verbatim
+3. Preserve the original meaning, context, findings, methodology, and conclusions completely
+4. Keep the same word count — do not add or remove content
+5. Do not modify any table content — return tables exactly as received
+6. Do not change section headings
+7. Do not add new information, examples, or explanations
+8. Do not remove any information
+9. Maintain the same structure and flow as the original
+
+Return ONLY the rewritten text. No explanation, no comments, no markdown formatting.
+
+Section text:
+`;
+
 // ─── Public Functions ──────────────────────────────────────────────────────────
 
 export async function tryGeminiOnly(plainText: string): Promise<Omit<GeminiExtractedData, 'extractionMethod'> | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
-  return tryGemini(apiKey, plainText.slice(0, 3000));
+  return tryGemini(apiKey, plainText);
 }
 
 export async function tryZaiOnly(plainText: string): Promise<Omit<GeminiExtractedData, 'extractionMethod'> | null> {
   const apiKey = process.env.ZAI_API_KEY;
   if (!apiKey) return null;
-  return tryZai(apiKey, plainText.slice(0, 3000));
+  return tryZai(apiKey, plainText);
+}
+
+export async function rewriteSectionContent(content: string): Promise<string | null> {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    const result = await rewriteWithGemini(geminiKey, content);
+    if (result) return result;
+  }
+  const zaiKey = process.env.ZAI_API_KEY;
+  if (zaiKey) {
+    const result = await rewriteWithZai(zaiKey, content);
+    if (result) return result;
+  }
+  return null;
 }
 
 // ─── Internal Functions ────────────────────────────────────────────────────────
@@ -108,6 +141,49 @@ async function tryZai(apiKey: string, textSample: string): Promise<Omit<GeminiEx
     return parseMetadataResponse(text);
   } catch (error) {
     console.warn('ZAI failed:', (error as Error).message);
+    return null;
+  }
+}
+
+// ─── Document Rewrite Internal Functions ──────────────────────────────────────
+
+async function rewriteWithGemini(apiKey: string, content: string): Promise<string | null> {
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const result = await model.generateContent(DOCUMENT_REWRITE_PROMPT + content);
+    const text = result.response.text().trim();
+    return text || null;
+  } catch (error) {
+    console.warn('Gemini rewrite failed:', (error as Error).message);
+    return null;
+  }
+}
+
+async function rewriteWithZai(apiKey: string, content: string): Promise<string | null> {
+  try {
+    const response = await fetch('https://api.z.ai/api/paas/v4/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'GLM-4.7-Flash',
+        messages: [{ role: 'user', content: DOCUMENT_REWRITE_PROMPT + content }],
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn('ZAI rewrite failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json() as any;
+    const text = (data?.choices?.[0]?.message?.content || '').trim();
+    return text || null;
+  } catch (error) {
+    console.warn('ZAI rewrite failed:', (error as Error).message);
     return null;
   }
 }

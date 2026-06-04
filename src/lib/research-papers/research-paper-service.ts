@@ -4,7 +4,7 @@ import {
   extractStructuredDataFromDocx,
 } from './docx-extractor';
 import type { ExtractedStructuredData } from './docx-extractor';
-import { tryGeminiOnly, tryZaiOnly } from './gemini-extractor';
+import { tryGeminiOnly, tryZaiOnly, rewriteSectionContent } from './gemini-extractor';
 import {
   removeStoredResearchPaperFile,
   validateResearchPaperFile,
@@ -115,12 +115,23 @@ export async function enhanceExtractedResearchPaperData(
     : structured.authors;
 
   const sanitizedKeywords = keywords.filter((k) => typeof k === 'string');
-  const sectionsForDraft = structured.sections.map((section, index) => ({
-    heading: section.heading ? section.heading.trim() : 'Untitled Section',
-    content: section.content ? section.content.trim() : '',
-    sectionOrder: index,
-    isFullWidth: true,
-  }));
+
+  const sectionsForDraft = await Promise.all(
+    structured.sections.map(async (section, index) => {
+      const originalContent = section.content ? section.content.trim() : '';
+      let finalContent = originalContent;
+      if (originalContent && usedStep !== 'basic') {
+        const rewritten = await rewriteSectionContent(originalContent);
+        if (rewritten) finalContent = rewritten;
+      }
+      return {
+        heading: section.heading ? section.heading.trim() : 'Untitled Section',
+        content: finalContent,
+        sectionOrder: index,
+        isFullWidth: true,
+      };
+    })
+  );
 
   return {
     extractedData: {

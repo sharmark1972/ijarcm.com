@@ -289,6 +289,15 @@
   margin: 0 0 8px;
 }
 
+.pdf-content-section,
+.pdf-section-full,
+.pdf-section-two-col,
+.pdf-two-column-flow,
+.pdf-single-column-flow,
+.pdf-full-width-object {
+  text-align: justify;
+}
+
 .pdf-section-two-col p,
 .pdf-section-full p,
 .pdf-two-column-flow p,
