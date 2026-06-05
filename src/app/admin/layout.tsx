@@ -100,12 +100,6 @@ export default function AdminLayout({
       current: false,
     },
     {
-      name: 'Research Papers',
-      href: '/admin/research-papers',
-      icon: FileText,
-      current: false,
-    },
-    {
       name: 'Ebooks',
       href: '/admin/ebooks',
       icon: Book,

@@ -35,6 +35,24 @@ export async function uploadToR2(
   }
 }
 
+export async function downloadFromR2(fileUrl: string): Promise<Buffer> {
+  try {
+    const url = new URL(fileUrl);
+    const key = url.pathname.substring(1);
+
+    const params = {
+      Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME!,
+      Key: key,
+    };
+
+    const result = await s3Client.getObject(params).promise();
+    return result.Body as Buffer;
+  } catch (error) {
+    console.error('R2 download error:', error);
+    throw new Error('Failed to download file from R2');
+  }
+}
+
 export async function deleteFromR2(fileUrl: string): Promise<void> {
   try {
     const url = new URL(fileUrl);

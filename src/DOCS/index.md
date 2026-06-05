@@ -50,8 +50,10 @@
 | Local extraction compatibility endpoint | `src/app/api/admin/research-papers/ai-extract/route.ts` |
 | Research paper draft API | `src/app/api/admin/research-papers/route.ts`, `src/app/api/admin/research-papers/[id]/route.ts` |
 | Research paper PDF preview API | `src/app/api/admin/research-papers/preview-pdf/route.ts` |
+| **Submit + publish (new flow)** | `src/app/api/admin/research-papers/submit/route.ts` |
+| **Admin download PDF (on-demand)** | `src/app/api/admin/research-papers/[id]/download/route.ts` |
 | Legacy research paper upload API | `src/app/api/admin/research-papers/upload/route.ts` |
-| Publish draft API | `src/app/api/admin/research-papers/[id]/publish/route.ts` |
+| Publish draft API (old) | `src/app/api/admin/research-papers/[id]/publish/route.ts` |
 | Serve draft PDF / preview PDF | `src/app/api/admin/research-papers/[id]/pdf/route.ts` |
 
 ### Quick Facts

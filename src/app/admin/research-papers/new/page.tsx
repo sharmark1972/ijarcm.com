@@ -98,6 +98,7 @@ export default function NewResearchPaperPage() {
   const [issueId, setIssueId] = useState('');
   const [issues, setIssues] = useState<AdminIssue[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDraftLoading, setIsDraftLoading] = useState(!!searchParams.get('id'));
   const [isSaving, setIsSaving] = useState(false);
   const [isPreviewingPdf, setIsPreviewingPdf] = useState(false);
   const [message, setMessage] = useState('');
@@ -105,7 +106,7 @@ export default function NewResearchPaperPage() {
   const [extractionStatus, setExtractionStatus] = useState<'idle' | 'local' | 'gemini' | 'zai' | 'basic' | 'done'>('idle');
   const [extractionMethod, setExtractionMethod] = useState<'gemini' | 'zai' | 'basic' | null>(null);
   const [extractionMode, setExtractionMode] = useState<'auto' | 'gemini' | 'zai' | 'basic'>('auto');
-  const [paperStatus, setPaperStatus] = useState<string>('PUBLISHED');
+  const [paperStatus, setPaperStatus] = useState<string>('DRAFT');
   const [paperType, setPaperType] = useState<string>('');
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [generatedPdfBlob, setGeneratedPdfBlob] = useState<Blob | null>(null);
@@ -114,6 +115,17 @@ export default function NewResearchPaperPage() {
 
   if (!isAdmin()) {
     redirect('/dashboard');
+  }
+
+  if (isDraftLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-sm">Loading paper data...</p>
+        </div>
+      </div>
+    );
   }
 
   const activeSectionIndex = Math.max(
@@ -144,6 +156,7 @@ export default function NewResearchPaperPage() {
 
     const fetchDraft = async () => {
       try {
+        setIsDraftLoading(true);
         setError('');
         const response = await fetch(`/api/admin/research-papers/${draftId}`);
         const data = await response.json();
@@ -151,6 +164,8 @@ export default function NewResearchPaperPage() {
         applyExtractedData(data.draft);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load draft');
+      } finally {
+        setIsDraftLoading(false);
       }
     };
 
@@ -232,14 +247,32 @@ export default function NewResearchPaperPage() {
       if (extension !== '.docx') {
         throw new Error('Automatic local extraction currently supports DOCX files only.');
       }
+
+      console.log('[STEP 1] DOCX local read start — file:', file.name, 'size:', file.size, 'bytes');
       const structured = await extractStructuredDataFromDocx(await file.arrayBuffer(), extension);
+      console.log('[STEP 1] DOCX local read done — sections found:', structured.sections.length, '| DB: NOT touched | R2: NOT touched');
+
+      // Keep original HTML sections (with base64 images) in browser — never send to server
+      const originalSectionsWithImages = structured.sections.map((s) => ({ ...s }));
+
+      // Strip base64 images from structured before sending to AI server (reduce payload)
+      const structuredForAi = {
+        ...structured,
+        sections: structured.sections.map((s) => ({
+          ...s,
+          content: s.content.replace(/<img[^>]*>/gi, ''),
+        })),
+        rawHtml: structured.rawHtml.replace(/<img[^>]*>/gi, ''),
+      };
+
       setExtractionStatus(extractionMode === 'zai' ? 'zai' : extractionMode === 'basic' ? 'basic' : 'gemini');
 
+      console.log('[STEP 2] AI extract start — mode:', extractionMode, '| sending to server (no DB, no R2)');
       const response = await fetch('/api/admin/research-papers/ai-extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          structured,
+          structured: structuredForAi,
           sourceFileName: file.name,
           sourceFileSize: file.size,
           extractionMode,
@@ -249,12 +282,25 @@ export default function NewResearchPaperPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'AI extraction failed');
 
+      console.log('[STEP 2] AI extract done — method:', data.extractionMethod, '| DB: NOT touched | R2: NOT touched');
       setExtractionMethod(data.extractionMethod);
       setExtractionStatus('done');
-      applyExtractedData(data.extractedData);
+
+      // Merge AI metadata with original HTML sections (which have images)
+      const mergedData = {
+        ...data.extractedData,
+        sections: originalSectionsWithImages.map((s, i) => ({
+          heading: data.extractedData.sections[i]?.heading || s.heading,
+          content: s.content, // original HTML with base64 images
+          isFullWidth: true,
+        })),
+      };
+      applyExtractedData(mergedData);
+      console.log('[STEP 2] Data applied to local state — sections have HTML with images');
     } catch (err) {
       setExtractionStatus('idle');
       setError(err instanceof Error ? err.message : 'Failed to read file');
+      console.error('[STEP 1/2] ERROR:', err);
     } finally {
       setIsProcessing(false);
     }
@@ -414,22 +460,6 @@ export default function NewResearchPaperPage() {
       .filter((section) => section.heading || section.content),
   });
 
-  const silentSave = async () => {
-    if (!draftId) return null;
-    try {
-      const response = await fetch(`/api/admin/research-papers/${draftId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildSavePayload()),
-      });
-      const data = await response.json();
-      if (!response.ok) return null;
-      return data.draft as BackendDraft;
-    } catch {
-      return null;
-    }
-  };
-
   const buildPdfPayload = () => {
     const issueData = selectedIssue
       ? {
@@ -465,9 +495,11 @@ export default function NewResearchPaperPage() {
   const generatePdfBlob = async () => {
     const signature = getPdfSignature();
     if (generatedPdfBlob && generatedPdfSignatureRef.current === signature) {
+      console.log('[STEP 3] PDF already generated (cached) — skipping regeneration | DB: NOT touched | R2: NOT touched');
       return generatedPdfBlob;
     }
 
+    console.log('[STEP 3] PDF generate start — sending local state to server (Playwright) | DB: NOT touched | R2: NOT touched');
     const response = await fetch('/api/admin/research-papers/preview-pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -483,28 +515,35 @@ export default function NewResearchPaperPage() {
     setGeneratedPdfBlob(blob);
     generatedPdfSignatureRef.current = signature;
     if (pdfChoice !== 'uploaded') setPdfChoice('generated');
+    console.log('[STEP 3] PDF generate done — blob size:', blob.size, 'bytes | DB: NOT touched | R2: NOT touched');
     return blob;
   };
 
   const createPaper = async () => {
     setSubmitAttempted(true);
+
     if (!draft.title) {
       setError('Title is required before submitting.');
       return;
     }
     if (paperStatus === 'PUBLISHED' && !issueId) {
+      setError('Please select an issue before publishing.');
       return;
     }
-    if (!pdfChoice) {
-      setError('Please select a PDF option before submitting.');
+    if (!draft.abstract) {
+      setError('Abstract is required before submitting.');
       return;
     }
-    if (pdfChoice === 'uploaded' && !uploadedPdfFile) {
-      setError('Please upload a corrected PDF before submitting.');
+    if (draft.authors.filter((a) => a.name.trim()).length === 0) {
+      setError('At least one author is required.');
       return;
     }
-    if (pdfChoice === 'generated' && !generatedPdfBlob) {
-      setError('Please preview or download the PDF first.');
+    if (draft.sections.filter((s) => s.heading || s.cleaned).length === 0) {
+      setError('At least one section is required.');
+      return;
+    }
+    if (!file) {
+      setError('DOCX file is required. Please re-upload the file before submitting.');
       return;
     }
 
@@ -516,46 +555,77 @@ export default function NewResearchPaperPage() {
       const authors = draft.authors
         .filter((a) => a.name.trim())
         .map((a) => ({
-          firstName: a.name.trim().split(' ')[0] || a.name.trim(),
-          lastName: a.name.trim().split(' ').slice(1).join(' ') || '',
-          email: a.email?.trim() || undefined,
+          name: a.name.trim(),
+          email: a.email?.trim() || null,
+          affiliation: (a as any).affiliation?.trim() || null,
           isCorresponding: a.corresponding,
         }));
+
+      // Plain text only — no HTML, no images — for DB
+      const sections = draft.sections
+        .filter((s) => s.heading || s.cleaned)
+        .map((s) => ({
+          heading: s.heading.trim(),
+          content: s.cleaned.replace(/<img[^>]*>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+          isFullWidth: s.isFullWidth ?? true,
+        }));
+
+      // PDF generate karo (cached ho to instant, nahi to fresh)
+      console.log('[STEP 4a] PDF generate/fetch from cache start');
+      const pdfBlob = await generatePdfBlob();
+      console.log('[STEP 4a] PDF ready — size:', pdfBlob.size, 'bytes');
+
+      console.log('[STEP 4b] Submit start —', {
+        title: draft.title,
+        authors: authors.length,
+        sections: sections.length,
+        keywords: draft.keywords.length,
+        issueId,
+        docx: file.name,
+        pdf: pdfBlob.size + ' bytes',
+        'DB': 'WILL BE CREATED NOW',
+        'R2': 'DOCX + PDF WILL BE UPLOADED',
+      });
 
       const submitData = new FormData();
       submitData.append('title', draft.title);
       submitData.append('abstract', draft.abstract || '');
-      submitData.append('keywords', draft.keywords.filter(Boolean).join(', '));
+      submitData.append('keywords', JSON.stringify(draft.keywords.filter(Boolean)));
       submitData.append('authors', JSON.stringify(authors));
-      submitData.append('category', draft.category || 'Research');
+      submitData.append('sections', JSON.stringify(sections));
+      submitData.append('bodyColumnMode', draft.bodyColumnMode || 'two-column');
       submitData.append('status', paperStatus);
-      if (paperType) submitData.append('paperType', paperType);
       if (issueId) submitData.append('issueId', issueId);
       if (draft.doi) submitData.append('doi', draft.doi);
-      submitData.append('generatePDF', 'false');
-      if (file) {
-        submitData.append('sourceFile', file);
-      }
+      submitData.append('sourceFileName', file.name);
+      submitData.append('sourceFileSize', String(file.size));
+      submitData.append('docx', file);
+      submitData.append('pdf', pdfBlob, 'paper.pdf');
 
-      if (pdfChoice === 'uploaded' && uploadedPdfFile) {
-        submitData.append('file', uploadedPdfFile);
-      } else if (pdfChoice === 'generated' && generatedPdfBlob) {
-        const pdfFile = new File([generatedPdfBlob], 'research-paper.pdf', { type: 'application/pdf' });
-        submitData.append('file', pdfFile);
-      }
-
-      const response = await fetch(
-        isEditMode ? `/api/admin/papers/${editId}` : '/api/admin/papers',
-        { method: isEditMode ? 'PATCH' : 'POST', body: submitData }
-      );
+      const response = await fetch('/api/admin/research-papers/submit', {
+        method: 'POST',
+        body: submitData,
+      });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || (isEditMode ? 'Failed to update paper' : 'Failed to submit paper'));
+      if (!response.ok) throw new Error(data.error || 'Failed to submit paper');
 
-      setMessage(isEditMode ? 'Paper updated successfully!' : 'Paper submitted successfully!');
-      router.push('/admin/papers');
+      console.log('[STEP 4] Submit done —', {
+        draftId: data.draft?.id,
+        status: data.draft?.status,
+        sourceFilePath: data.draft?.sourceFilePath,
+        sectionsInDB: data.draft?.sections?.length,
+        authorsInDB: data.draft?.authors?.length,
+        'DB': 'ResearchPaperDraft CREATED ✅',
+        'R2': 'DOCX uploaded ✅',
+        'PDF': 'NOT saved ✅',
+      });
+
+      setMessage('Paper published successfully!');
+      router.push(`/admin/research-papers/${data.draft.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit paper');
+      console.error('[STEP 4] Submit ERROR:', err);
     } finally {
       setIsSaving(false);
     }
@@ -918,12 +988,10 @@ export default function NewResearchPaperPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SUBMITTED">Submitted</SelectItem>
-                      <SelectItem value="UNDER_REVIEW">Under Review</SelectItem>
-                      <SelectItem value="REVISION_REQUIRED">Revision Required</SelectItem>
-                      <SelectItem value="ACCEPTED">Accepted</SelectItem>
+                      <SelectItem value="DRAFT">Draft</SelectItem>
+                      <SelectItem value="EDITING">Editing</SelectItem>
+                      <SelectItem value="READY">Ready</SelectItem>
                       <SelectItem value="PUBLISHED">Published</SelectItem>
-                      <SelectItem value="REJECTED">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1219,43 +1287,13 @@ export default function NewResearchPaperPage() {
                 </Button>
               </div>
 
-              {/* PDF Selection */}
-              <div className="mt-4">
-                <p className="mb-2 text-xs font-medium text-slate-500 uppercase tracking-wide">Select PDF for submission</p>
-                <div className="space-y-2">
-                  <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${pdfChoice === 'generated' ? 'border-slate-800 bg-slate-50' : 'border-slate-200 hover:border-slate-300'} ${!generatedPdfBlob ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                    <input type="radio" name="pdfChoice" value="generated" checked={pdfChoice === 'generated'} disabled={!generatedPdfBlob} onChange={() => setPdfChoice('generated')} className="accent-slate-900" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">Use generated PDF</p>
-                      <p className="text-xs text-slate-500">{generatedPdfBlob ? '✓ Ready to submit' : 'Preview or Download first'}</p>
-                    </div>
-                  </label>
-                  <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${pdfChoice === 'uploaded' ? 'border-slate-800 bg-slate-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                    <input type="radio" name="pdfChoice" value="uploaded" checked={pdfChoice === 'uploaded'} onChange={() => setPdfChoice('uploaded')} className="accent-slate-900" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800">Upload corrected PDF</p>
-                      <p className="text-xs text-slate-500 truncate">{uploadedPdfFile ? `✓ ${uploadedPdfFile.name}` : 'Upload your corrected version'}</p>
-                    </div>
-                  </label>
-                </div>
-
-                {pdfChoice === 'uploaded' && (
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    className="mt-2 w-full text-sm text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-slate-200"
-                    onChange={(e) => setUploadedPdfFile(e.target.files?.[0] || null)}
-                  />
-                )}
-              </div>
-
               <Button
                 className="mt-4 w-full bg-green-700 hover:bg-green-800"
-                disabled={!draft.title || isSaving || isPreviewingPdf || !pdfChoice || (pdfChoice === 'uploaded' && !uploadedPdfFile)}
+                disabled={!draft.title || isSaving || isPreviewingPdf}
                 onClick={createPaper}
               >
                 <Save className="h-4 w-4" />
-                {isSaving ? (isEditMode ? 'Updating...' : 'Submitting...') : (isEditMode ? 'Update Paper' : 'Submit Paper')}
+                {isSaving ? 'Publishing...' : 'Publish Paper'}
               </Button>
             </section>
 

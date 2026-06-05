@@ -4,14 +4,13 @@ import {
   extractStructuredDataFromDocx,
 } from './docx-extractor';
 import type { ExtractedStructuredData } from './docx-extractor';
-import { tryGeminiOnly, tryZaiOnly, rewriteSectionContent } from './gemini-extractor';
+import { tryGeminiOnly, tryZaiOnly } from './gemini-extractor';
 import {
   removeStoredResearchPaperFile,
   validateResearchPaperFile,
 } from './storage';
 import { validateDraftUpdate, validatePublishReady } from './validation';
 import type { ResearchPaperDraftUpdateInput } from './types';
-import { generateResearchPaperPdf } from './pdf-service';
 
 const includeDraftRelations = {
   authors: { orderBy: { authorOrder: 'asc' as const } },
@@ -116,22 +115,12 @@ export async function enhanceExtractedResearchPaperData(
 
   const sanitizedKeywords = keywords.filter((k) => typeof k === 'string');
 
-  const sectionsForDraft = await Promise.all(
-    structured.sections.map(async (section, index) => {
-      const originalContent = section.content ? section.content.trim() : '';
-      let finalContent = originalContent;
-      if (originalContent && usedStep !== 'basic') {
-        const rewritten = await rewriteSectionContent(originalContent);
-        if (rewritten) finalContent = rewritten;
-      }
-      return {
-        heading: section.heading ? section.heading.trim() : 'Untitled Section',
-        content: finalContent,
-        sectionOrder: index,
-        isFullWidth: true,
-      };
-    })
-  );
+  const sectionsForDraft = structured.sections.map((section, index) => ({
+    heading: section.heading ? section.heading.trim() : 'Untitled Section',
+    content: section.content ? section.content.trim() : '',
+    sectionOrder: index,
+    isFullWidth: true,
+  }));
 
   return {
     extractedData: {
@@ -320,10 +309,24 @@ export async function deleteResearchPaperDraft(id: string) {
   const existing = await prisma.researchPaperDraft.findUnique({ where: { id } });
   if (!existing) throw new Error('Research paper draft not found.');
 
+  console.log('[DELETE] Deleting ResearchPaperDraft from DB —', { id, title: existing.title });
   await prisma.researchPaperDraft.delete({ where: { id } });
-  await removeStoredResearchPaperFile(existing.sourceFilePath);
-  await removeStoredResearchPaperFile(existing.pdfPath);
-  await removeStoredResearchPaperFile(existing.previewPdfPath);
+  console.log('[DELETE] DB record deleted ✅');
+
+  if (existing.sourceFilePath) {
+    console.log('[DELETE] Removing DOCX from R2 —', existing.sourceFilePath);
+    await removeStoredResearchPaperFile(existing.sourceFilePath);
+    console.log('[DELETE] DOCX removed from R2 ✅');
+  }
+  if (existing.pdfPath) {
+    console.log('[DELETE] Removing PDF from R2 —', existing.pdfPath);
+    await removeStoredResearchPaperFile(existing.pdfPath);
+  }
+  if (existing.previewPdfPath) {
+    console.log('[DELETE] Removing preview PDF from R2 —', existing.previewPdfPath);
+    await removeStoredResearchPaperFile(existing.previewPdfPath);
+  }
+  console.log('[DELETE] Complete ✅ — id:', id);
 }
 
 export async function publishResearchPaperDraft(id: string) {
@@ -337,7 +340,6 @@ export async function publishResearchPaperDraft(id: string) {
 
   if (!draft) throw new Error('Research paper draft not found.');
   validatePublishReady(draft);
-  await generateResearchPaperPdf(id, 'final');
 
   return prisma.researchPaperDraft.update({
     where: { id },
