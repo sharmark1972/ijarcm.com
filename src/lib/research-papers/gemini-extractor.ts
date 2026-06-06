@@ -65,10 +65,11 @@ const DOCUMENT_REWRITE_PROMPT = `You are a research paper editor. Rewrite the fo
 3. Preserve the original meaning, context, findings, methodology, and conclusions completely
 4. Keep the same word count — do not add or remove content
 5. Do not modify any table content — return tables exactly as received
-6. Do not change section headings
+6. Do not change section headings — use them exactly as-is, do not shorten, rephrase, or alter them in any way
 7. Do not add new information, examples, or explanations
 8. Do not remove any information
 9. Maintain the same structure and flow as the original
+10. If the section is a References or Bibliography section — return it completely unchanged, word for word, exactly as received
 
 Return ONLY the rewritten text. No explanation, no comments, no markdown formatting.
 

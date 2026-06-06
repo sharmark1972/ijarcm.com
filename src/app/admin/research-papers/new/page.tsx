@@ -97,6 +97,8 @@ export default function NewResearchPaperPage() {
   const [activeSectionId, setActiveSectionId] = useState('abstract');
   const [issueId, setIssueId] = useState('');
   const [issues, setIssues] = useState<AdminIssue[]>([]);
+  const [journalId, setJournalId] = useState('');
+  const [journals, setJournals] = useState<Array<{ id: string; name: string; abbreviation: string; issnPrint: string | null; issnOnline: string | null; website: string | null; isDefault: boolean }>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDraftLoading, setIsDraftLoading] = useState(!!searchParams.get('id'));
   const [isSaving, setIsSaving] = useState(false);
@@ -148,7 +150,19 @@ export default function NewResearchPaperPage() {
       if (response.ok) setIssues(data.issues || []);
     };
 
+    const fetchJournals = async () => {
+      const response = await fetch('/api/admin/journals');
+      const data = await response.json();
+      if (response.ok) {
+        const active = (data.journals || []).filter((j: any) => j.isActive);
+        setJournals(active);
+        const def = active.find((j: any) => j.isDefault);
+        if (def) setJournalId(def.id);
+      }
+    };
+
     fetchIssues();
+    fetchJournals();
   }, []);
 
   useEffect(() => {
@@ -470,6 +484,17 @@ export default function NewResearchPaperPage() {
         }
       : null;
 
+    const selectedJournal = journals.find((j) => j.id === journalId);
+    const journalData = selectedJournal
+      ? {
+          name: selectedJournal.name,
+          abbreviation: selectedJournal.abbreviation,
+          issnPrint: selectedJournal.issnPrint,
+          issnOnline: selectedJournal.issnOnline,
+          website: selectedJournal.website,
+        }
+      : null;
+
     return {
       title: draft.title,
       abstract: draft.abstract,
@@ -487,6 +512,7 @@ export default function NewResearchPaperPage() {
         isFullWidth: s.isFullWidth ?? true,
       })),
       issue: issueData,
+      journal: journalData,
     };
   };
 
@@ -962,6 +988,33 @@ export default function NewResearchPaperPage() {
             <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/50">
               <h2 className="text-lg font-semibold text-slate-950">Publishing Details</h2>
               <div className="mt-4 space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Journal</label>
+                  <Select value={journalId || 'none'} onValueChange={(value) => setJournalId(value === 'none' ? '' : value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select journal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {journals.map((j) => (
+                        <SelectItem key={j.id} value={j.id}>
+                          {j.abbreviation} — {j.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {journalId && (() => {
+                    const j = journals.find((jj) => jj.id === journalId);
+                    if (!j) return null;
+                    return (
+                      <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                        {j.issnPrint && <span><span className="font-medium">ISSN Print:</span> {j.issnPrint}</span>}
+                        {j.issnOnline && <span><span className="font-medium">ISSN Online:</span> {j.issnOnline}</span>}
+                        {j.website && <span><span className="font-medium">Website:</span> {j.website.replace(/^https?:\/\//, '')}</span>}
+                      </div>
+                    );
+                  })()}
+                </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Issue</label>
                   <Select value={issueId || 'none'} onValueChange={(value) => setIssueId(value === 'none' ? '' : value)}>

@@ -3,8 +3,11 @@ import { join } from 'path';
 import { prisma } from '@/lib/prisma';
 import { deleteFromR2, uploadToR2 } from '@/lib/r2-upload';
 
-async function generatePdfFromHtml(html: string): Promise<Buffer> {
+async function generatePdfFromHtml(html: string, footerJournalName?: string, footerWebsite?: string): Promise<Buffer> {
   const isVercel = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+  const jName = footerJournalName || 'International Journal of Academic Research in Commerce &amp; Management';
+  const jSite = footerWebsite ? footerWebsite.replace(/^https?:\/\//, '') : 'www.ijarcm.com';
+  const footerHtml = `<div style="width:100%;font-family:'Times New Roman',serif;font-size:9px;color:#475569;padding:0 14mm;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #cbd5e1;"><span>${jName}</span><span>${jSite}</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`;
 
   if (isVercel) {
     const token = process.env.BLESS_TOKEN;
@@ -21,11 +24,7 @@ async function generatePdfFromHtml(html: string): Promise<Buffer> {
           preferCSSPageSize: true,
           displayHeaderFooter: true,
           headerTemplate: '<span></span>',
-          footerTemplate: `<div style="width:100%;font-family:'Times New Roman',serif;font-size:9px;color:#475569;padding:0 14mm;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #cbd5e1;">
-            <span>International Journal of Academic Research in Commerce &amp; Management</span>
-            <span>www.ijarcm.com</span>
-            <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
-          </div>`,
+          footerTemplate: footerHtml,
           margin: { top: '10mm', bottom: '18mm', left: '0', right: '0' },
         },
       }),
@@ -49,7 +48,7 @@ async function generatePdfFromHtml(html: string): Promise<Buffer> {
         preferCSSPageSize: true,
         displayHeaderFooter: true,
         headerTemplate: '<span></span>',
-        footerTemplate: `<div style="width:100%;font-family:'Times New Roman',serif;font-size:9px;color:#475569;padding:0 14mm;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #cbd5e1;"><span>International Journal of Academic Research in Commerce &amp; Management</span><span>www.ijarcm.com</span><span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>`,
+        footerTemplate: footerHtml,
         margin: { top: '10mm', bottom: '18mm', left: '0', right: '0' },
       });
       return Buffer.from(pdf);
@@ -70,12 +69,13 @@ export interface PreviewPdfData {
   authors: Array<{ name: string; email?: string; affiliation?: string }>;
   sections: Array<{ heading: string; content: string; isFullWidth: boolean }>;
   issue?: { volume: string; issueNumber: string; year: number; publishDate: string } | null;
+  journal?: { name: string; issnPrint?: string | null; issnOnline?: string | null; website?: string | null; abbreviation: string } | null;
 }
 
 
 export async function generatePreviewPdfFromData(data: PreviewPdfData): Promise<Buffer> {
   const html = await buildPdfHtmlFromData(data);
-  return generatePdfFromHtml(html);
+  return generatePdfFromHtml(html, data.journal?.name, data.journal?.website || undefined);
 }
 
 async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
@@ -84,9 +84,13 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
   const logoBuffer = await readFile(join(process.cwd(), 'public', 'ijarcm_logo.png'));
   const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
   const issue = data.issue;
+  const journal = data.journal;
   const publishedDate = issue
     ? `${new Date(issue.publishDate).toLocaleString('en-US', { month: 'long' })}-${issue.year}`
     : '';
+  const journalName = journal?.name || 'International Journal of Academic Research in Commerce & Management';
+  const journalWebsite = journal?.website || 'https://www.ijarcm.com/';
+  const journalIssn = journal?.issnPrint || journal?.issnOnline || '2455-0116';
 
   return `<!doctype html>
 <html>
@@ -114,15 +118,15 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
     <article class="research-paper-sheet">
       <header class="pdf-first-header">
         <div class="pdf-masthead">
-          <div class="pdf-issn">ISSN: 2455-0116</div>
+          <div class="pdf-issn">ISSN: ${escapeHtml(journalIssn)}</div>
           <div class="pdf-journal-title">
             <div class="pdf-journal-title-box">
-              <h1>International Journal of Academic Research in Commerce &amp; Management</h1>
-              <span>Available online at: https://www.ijarcm.com/</span>
+              <h1>${escapeHtml(journalName)}</h1>
+              <span>Available online at: ${escapeHtml(journalWebsite)}</span>
             </div>
           </div>
           <div class="pdf-masthead-logos">
-            <img src="${logoBase64}" class="pdf-logo" alt="IJARCM" />
+            <img src="${logoBase64}" class="pdf-logo" alt="${escapeHtml(journal?.abbreviation || 'IJARCM')}" />
           </div>
         </div>
       </header>

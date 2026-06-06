@@ -8,46 +8,46 @@ datasource db {
 }
 
 model User {
-  id                  String             @id @default(uuid())
-  email               String?            @unique
-  passwordHash        String             @map("password_hash")
-  firstName           String             @map("first_name")
-  lastName            String             @map("last_name")
+  id                  String               @id @default(uuid())
+  email               String?              @unique
+  passwordHash        String               @map("password_hash")
+  firstName           String               @map("first_name")
+  lastName            String               @map("last_name")
   role                UserRole
-  institution         String?            @db.VarChar(255)
-  isVerified          Boolean            @default(false) @map("is_verified")
-  createdAt           DateTime           @default(now()) @map("created_at")
-  updatedAt           DateTime           @updatedAt @map("updated_at")
-  banReason           String?            @map("ban_reason") @db.Text
-  isBanned            Boolean            @default(false) @map("is_banned")
-  isWarned            Boolean            @default(false) @map("is_warned")
-  warningDate         DateTime?          @map("warning_date")
-  warningMessage      String?            @map("warning_message") @db.Text
-  bio                 String?            @db.Text
-  resetToken          String?            @map("reset_token")
-  resetTokenExpiry    DateTime?          @map("reset_token_expiry")
+  institution         String?              @db.VarChar(255)
+  isVerified          Boolean              @default(false) @map("is_verified")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  banReason           String?              @map("ban_reason") @db.Text
+  isBanned            Boolean              @default(false) @map("is_banned")
+  isWarned            Boolean              @default(false) @map("is_warned")
+  warningDate         DateTime?            @map("warning_date")
+  warningMessage      String?              @map("warning_message") @db.Text
+  bio                 String?              @db.Text
+  resetToken          String?              @map("reset_token")
+  resetTokenExpiry    DateTime?            @map("reset_token_expiry")
   accounts            Account[]
-  advertisements      Advertisement[]    @relation("AdCreator")
-  announcements       Announcement[]     @relation("AnnouncementCreator")
+  advertisements      Advertisement[]      @relation("AdCreator")
+  announcements       Announcement[]       @relation("AnnouncementCreator")
   bookmarks           Bookmark[]
-  revokedCertificates Certificate[]      @relation("CertificateRevoker")
-  certificates        Certificate[]      @relation("UserCertificates")
-  conferences         Conference[]       @relation("ConferenceCreator")
+  revokedCertificates Certificate[]        @relation("CertificateRevoker")
+  certificates        Certificate[]        @relation("UserCertificates")
+  conferences         Conference[]         @relation("ConferenceCreator")
   downloads           Download[]
   ebook_purchases     ebook_purchases[]
   ebook_views         ebook_views[]
   ebooks              ebook[]
+  impactFactors       ImpactFactor[]       @relation("ImpactFactorCreator")
   paperAuthors        PaperAuthor[]
-  submittedPapers     Paper[]            @relation("PaperSubmitter")
-  plagiarismChecks    PlagiarismCheck[]  @relation("PlagiarismChecker")
+  submittedPapers     Paper[]              @relation("PaperSubmitter")
+  plagiarismChecks    PlagiarismCheck[]    @relation("PlagiarismChecker")
   researchPaperDrafts ResearchPaperDraft[] @relation("ResearchPaperCreator")
-  assignedReviews     ReviewAssignment[] @relation("AssignedByUser")
-  reviewerAssignments ReviewAssignment[] @relation("ReviewerAssignments")
+  assignedReviews     ReviewAssignment[]   @relation("AssignedByUser")
+  reviewerAssignments ReviewAssignment[]   @relation("ReviewerAssignments")
   reviews             Review[]
   sessions            Session[]
   supportTickets      SupportTicket[]
   ticketReplies       TicketReply[]
-  impactFactors       ImpactFactor[]     @relation("ImpactFactorCreator")
 
   @@index([email])
   @@index([role])
@@ -55,18 +55,18 @@ model User {
 }
 
 model Issue {
-  id          String   @id @default(uuid())
-  title       String   @db.VarChar(500)
-  description String?  @db.Text
-  volume      String   @db.VarChar(50)
-  issueNumber String   @map("issue_number") @db.VarChar(50)
-  year        Int
-  publishDate DateTime @map("publish_date")
-  coverImage  String?  @map("cover_image") @db.VarChar(500)
-  isPublished Boolean  @default(false) @map("is_published")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  papers      Paper[]
+  id                  String               @id @default(uuid())
+  title               String               @db.VarChar(500)
+  description         String?              @db.Text
+  volume              String               @db.VarChar(50)
+  issueNumber         String               @map("issue_number") @db.VarChar(50)
+  year                Int
+  publishDate         DateTime             @map("publish_date")
+  coverImage          String?              @map("cover_image") @db.VarChar(500)
+  isPublished         Boolean              @default(false) @map("is_published")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  papers              Paper[]
   researchPaperDrafts ResearchPaperDraft[]
 
   @@unique([volume, issueNumber])
@@ -82,9 +82,6 @@ model Paper {
   abstract          String                 @db.Text
   keywords          String?                @db.Text
   filePath          String                 @map("file_path") @db.VarChar(500)
-  sourceFilePath    String?                @map("source_file_path") @db.VarChar(500)
-  sourceFileName    String?                @map("source_file_name") @db.VarChar(255)
-  sourceFileSize    Int?                   @map("source_file_size")
   status            PaperStatus            @default(SUBMITTED)
   category          String?                @db.VarChar(100)
   submittedAt       DateTime               @default(now()) @map("submitted_at")
@@ -100,18 +97,22 @@ model Paper {
   doiStatus         DOIRegistrationStatus? @default(PENDING) @map("doi_status")
   doiRegisteredAt   DateTime?              @map("doi_registered_at")
   crossrefMetadata  Json?                  @map("crossref_metadata")
+  sourceFilePath    String?                @map("source_file_path") @db.VarChar(500)
+  sourceFileName    String?                @map("source_file_name") @db.VarChar(255)
+  sourceFileSize    Int?                   @map("source_file_size")
+  researchPaperDraftId String?             @unique @map("research_paper_draft_id") @db.VarChar(36)
   archivePapers     ArchivePaper[]
   bookmarks         Bookmark[]
   certificates      Certificate[]
   citations         Citation[]
   downloads         Download[]
   paperAuthors      PaperAuthor[]
+  paperContent      PaperContent?
   issue             Issue?                 @relation(fields: [issueId], references: [id])
   submitter         User                   @relation("PaperSubmitter", fields: [submitterId], references: [id])
   plagiarismChecks  PlagiarismCheck[]
   reviewAssignments ReviewAssignment[]
   reviews           Review[]
-  paperContent      PaperContent?
 
   @@index([submitterId])
   @@index([status])
@@ -128,29 +129,29 @@ model Paper {
 }
 
 model ResearchPaperDraft {
-  id                 String                 @id @default(uuid())
-  title              String?                @db.Text
-  shortTitle         String?                @map("short_title") @db.Text
-  abstract           String?                @db.LongText
-  keywords           Json?
-  doi                String?                @db.VarChar(200)
-  sourceFilePath     String?                @map("source_file_path") @db.VarChar(500)
-  sourceFileName     String?                @map("source_file_name") @db.VarChar(255)
-  sourceFileSize     Int?                   @map("source_file_size")
-  extractedText      String?                @map("extracted_text") @db.LongText
-  bodyColumnMode     String                 @default("two-column") @map("body_column_mode") @db.VarChar(20)
-  pdfPath            String?                @map("pdf_path") @db.VarChar(500)
-  previewPdfPath     String?                @map("preview_pdf_path") @db.VarChar(500)
-  status             ResearchPaperStatus    @default(DRAFT)
-  issueId            String?                @map("issue_id")
-  createdBy          String                 @map("created_by")
-  publishedAt        DateTime?              @map("published_at")
-  createdAt          DateTime               @default(now()) @map("created_at")
-  updatedAt          DateTime               @updatedAt @map("updated_at")
-  issue              Issue?                 @relation(fields: [issueId], references: [id])
-  creator            User                   @relation("ResearchPaperCreator", fields: [createdBy], references: [id])
-  authors            ResearchPaperAuthor[]
-  sections           ResearchPaperSection[]
+  id             String                 @id @default(uuid())
+  title          String?                @db.Text
+  shortTitle     String?                @map("short_title") @db.Text
+  abstract       String?                @db.LongText
+  keywords       Json?
+  doi            String?                @db.VarChar(200)
+  sourceFilePath String?                @map("source_file_path") @db.VarChar(500)
+  sourceFileName String?                @map("source_file_name") @db.VarChar(255)
+  sourceFileSize Int?                   @map("source_file_size")
+  extractedText  String?                @map("extracted_text") @db.LongText
+  bodyColumnMode String                 @default("two-column") @map("body_column_mode") @db.VarChar(20)
+  pdfPath        String?                @map("pdf_path") @db.VarChar(500)
+  previewPdfPath String?                @map("preview_pdf_path") @db.VarChar(500)
+  status         ResearchPaperStatus    @default(DRAFT)
+  issueId        String?                @map("issue_id")
+  createdBy      String                 @map("created_by")
+  publishedAt    DateTime?              @map("published_at")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at")
+  authors        ResearchPaperAuthor[]
+  creator        User                   @relation("ResearchPaperCreator", fields: [createdBy], references: [id])
+  issue          Issue?                 @relation(fields: [issueId], references: [id])
+  sections       ResearchPaperSection[]
 
   @@index([status])
   @@index([issueId])
@@ -160,14 +161,14 @@ model ResearchPaperDraft {
 }
 
 model ResearchPaperAuthor {
-  id           String             @id @default(uuid())
-  draftId      String             @map("draft_id")
-  name         String             @db.VarChar(255)
-  email        String?            @db.VarChar(255)
-  affiliation  String?            @db.VarChar(500)
-  authorOrder  Int                @default(0) @map("author_order")
-  isCorresponding Boolean         @default(false) @map("is_corresponding")
-  draft        ResearchPaperDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  id              String             @id @default(uuid())
+  draftId         String             @map("draft_id")
+  name            String             @db.VarChar(255)
+  email           String?            @db.VarChar(255)
+  affiliation     String?            @db.VarChar(500)
+  authorOrder     Int                @default(0) @map("author_order")
+  isCorresponding Boolean            @default(false) @map("is_corresponding")
+  draft           ResearchPaperDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
 
   @@index([draftId])
   @@index([authorOrder])
@@ -315,13 +316,13 @@ model PaperContent {
   id               String   @id @default(uuid())
   paperId          String   @unique @map("paper_id")
   introduction     String?  @db.LongText
-  literatureReview String?  @db.LongText @map("literature_review")
+  literatureReview String?  @map("literature_review") @db.LongText
   methodology      String?  @db.LongText
   results          String?  @db.LongText
   discussion       String?  @db.LongText
   conclusion       String?  @db.LongText
   references       String?  @db.LongText
-  images           Json?    // Store array of image URLs and their metadata
+  images           Json?
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
   paper            Paper    @relation(fields: [paperId], references: [id], onDelete: Cascade)
@@ -356,21 +357,19 @@ model Conference {
 }
 
 model Journal {
-  id           String        @id @default(uuid())
-  name         String        @db.VarChar(500)
-  abbreviation String        @db.VarChar(50)
-  website      String?       @db.VarChar(500)
-  issnPrint    String?       @map("issn_print") @db.VarChar(50)
-  issnOnline   String?       @map("issn_online") @db.VarChar(50)
-  origin       String?       @db.VarChar(100)
-  doiAllotted  Boolean       @default(false) @map("doi_allotted")
-  isDefault    Boolean       @default(false) @map("is_default")
-  isActive     Boolean       @default(true) @map("is_active")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  certificates Certificate[]
+  id           String   @id @default(uuid())
+  name         String   @db.VarChar(500)
+  abbreviation String   @unique @db.VarChar(50)
+  website      String?  @db.VarChar(500)
+  issnPrint    String?  @map("issn_print") @db.VarChar(50)
+  issnOnline   String?  @map("issn_online") @db.VarChar(50)
+  origin       String?  @db.VarChar(100)
+  doiAllotted  Boolean  @default(false) @map("doi_allotted")
+  isDefault    Boolean  @default(false) @map("is_default")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
 
-  @@unique([abbreviation])
   @@index([isActive])
   @@index([isDefault])
   @@map("journals")
@@ -467,27 +466,30 @@ model Visitor {
 }
 
 model Certificate {
-  id                String          @id @default(uuid())
-  paperId           String?         @map("paper_id")
-  userId            String?         @map("user_id")
-  certificateNumber String          @unique @map("certificate_number")
-  type              CertificateType @default(PUBLICATION)
-  title             String          @db.VarChar(500)
-  authorName        String          @map("author_name") @db.VarChar(200)
-  institution       String?         @db.VarChar(300)
-  topic             String?         @db.VarChar(500)
-  prize             String?         @db.VarChar(500)
-  issuedAt          DateTime        @default(now()) @map("issued_at")
-  customDate        DateTime?       @map("custom_date")
-  pdfPath           String?         @map("pdf_path") @db.VarChar(500)
-  isValid           Boolean         @default(true) @map("is_valid")
-  revokedAt         DateTime?       @map("revoked_at")
-  revokedBy         String?         @map("revoked_by")
-  journalId         String?         @map("journal_id")
-  paper             Paper?          @relation(fields: [paperId], references: [id])
-  revoker           User?           @relation("CertificateRevoker", fields: [revokedBy], references: [id])
-  user              User?           @relation("UserCertificates", fields: [userId], references: [id])
-  journal           Journal?        @relation(fields: [journalId], references: [id])
+  id                            String          @id @default(uuid())
+  paperId                       String?         @map("paper_id")
+  userId                        String?         @map("user_id")
+  certificateNumber             String          @unique @map("certificate_number")
+  type                          CertificateType @default(PUBLICATION)
+  title                         String          @db.VarChar(500)
+  authorName                    String          @map("author_name") @db.VarChar(200)
+  institution                   String?         @db.VarChar(300)
+  issuedAt                      DateTime        @default(now()) @map("issued_at")
+  pdfPath                       String?         @map("pdf_path") @db.VarChar(500)
+  isValid                       Boolean         @default(true) @map("is_valid")
+  revokedAt                     DateTime?       @map("revoked_at")
+  revokedBy                     String?         @map("revoked_by")
+  prize                         String?         @db.VarChar(500)
+  topic                         String?         @db.VarChar(500)
+  customDate                    DateTime?       @map("custom_date")
+  conference_dates              String?         @db.VarChar(200)
+  conference_location           String?         @db.VarChar(300)
+  conference_participation_type String?         @db.VarChar(50)
+  template                      String?         @default("classic") @db.VarChar(20)
+  journalId                     String?         @map("journal_id")
+  paper                         Paper?          @relation(fields: [paperId], references: [id])
+  revoker                       User?           @relation("CertificateRevoker", fields: [revokedBy], references: [id])
+  user                          User?           @relation("UserCertificates", fields: [userId], references: [id])
 
   @@index([paperId])
   @@index([userId])
@@ -553,21 +555,21 @@ model Citation {
 }
 
 model EditorialBoardMember {
-  id           String        @id @default(uuid())
-  name         String        @db.VarChar(200)
-  title        String?       @db.VarChar(200)
-  institution  String?       @db.VarChar(300)
-  email        String?       @db.VarChar(200)
-  bio          String?       @db.Text
-  expertise    String?       @db.Text
-  imageUrl     String?       @map("image_url") @db.VarChar(500)
-  position     BoardPosition @default(MEMBER)
-  displayOrder Int           @default(0) @map("display_order")
-  isActive     Boolean       @default(true) @map("is_active")
-  joinedAt     DateTime      @default(now()) @map("joined_at")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  resumeUrl    String?       @map("resume_url") @db.VarChar(500)
+  id           String         @id @default(uuid())
+  name         String         @db.VarChar(200)
+  title        String?        @db.VarChar(200)
+  institution  String?        @db.VarChar(300)
+  email        String?        @db.VarChar(200)
+  bio          String?        @db.Text
+  expertise    String?        @db.Text
+  imageUrl     String?        @map("image_url") @db.VarChar(500)
+  position     BoardPosition?
+  displayOrder Int            @default(0) @map("display_order")
+  isActive     Boolean        @default(true) @map("is_active")
+  joinedAt     DateTime       @default(now()) @map("joined_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  resumeUrl    String?        @map("resume_url") @db.VarChar(500)
 
   @@index([position])
   @@index([displayOrder])
@@ -841,7 +843,7 @@ model ebook_views {
 
 model ImpactFactor {
   id              String   @id @default(uuid())
-  year            Int
+  year            Int      @unique
   value           Float
   certificatePath String?  @map("certificate_path") @db.VarChar(500)
   isActive        Boolean  @default(true) @map("is_active")
@@ -850,11 +852,47 @@ model ImpactFactor {
   createdBy       String   @map("created_by")
   creator         User     @relation("ImpactFactorCreator", fields: [createdBy], references: [id])
 
-  @@unique([year])
   @@index([year])
   @@index([isActive])
   @@index([createdBy])
   @@map("impact_factors")
+}
+
+model AnimationSettings {
+  id            String    @id @default(uuid())
+  animationType String    @unique @map("animation_type") @db.VarChar(50)
+  isEnabled     Boolean   @default(false) @map("is_enabled")
+  startDate     DateTime? @map("start_date")
+  endDate       DateTime? @map("end_date")
+  customMessage String?   @map("custom_message") @db.Text
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([isEnabled])
+  @@index([animationType])
+  @@map("animation_settings")
+}
+
+model TeamMember {
+  id           String   @id @default(uuid())
+  name         String   @db.VarChar(200)
+  title        String?  @db.VarChar(200)
+  role         TeamRole @default(MEMBER)
+  institution  String?  @db.VarChar(300)
+  email        String?  @db.VarChar(200)
+  bio          String?  @db.Text
+  expertise    String?  @db.Text
+  imageUrl     String?  @map("image_url") @db.VarChar(500)
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  joinedAt     DateTime @default(now()) @map("joined_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@index([displayOrder])
+  @@index([isActive])
+  @@map("team_members")
 }
 
 enum UserRole {
@@ -1048,43 +1086,6 @@ enum DOIRegistrationStatus {
   REGISTERED
   FAILED
   SUBMITTED
-}
-
-model AnimationSettings {
-  id              String   @id @default(uuid())
-  animationType   String   @unique @map("animation_type") @db.VarChar(50)
-  isEnabled       Boolean  @default(false) @map("is_enabled")
-  startDate       DateTime? @map("start_date")
-  endDate         DateTime? @map("end_date")
-  customMessage   String?  @map("custom_message") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  @@index([isEnabled])
-  @@index([animationType])
-  @@map("animation_settings")
-}
-
-model TeamMember {
-  id            String      @id @default(uuid())
-  name          String      @db.VarChar(200)
-  title         String?     @db.VarChar(200)
-  role          TeamRole    @default(MEMBER)
-  institution   String?     @db.VarChar(300)
-  email         String?     @db.VarChar(200)
-  bio           String?     @db.Text
-  expertise     String?     @db.Text
-  imageUrl      String?     @map("image_url") @db.VarChar(500)
-  displayOrder  Int         @default(0) @map("display_order")
-  isActive      Boolean     @default(true) @map("is_active")
-  joinedAt      DateTime    @default(now()) @map("joined_at")
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @updatedAt @map("updated_at")
-
-  @@index([role])
-  @@index([displayOrder])
-  @@index([isActive])
-  @@map("team_members")
 }
 
 enum TeamRole {

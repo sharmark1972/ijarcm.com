@@ -164,6 +164,80 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Create Paper record if status is PUBLISHED and PDF is available
+    if (status === 'PUBLISHED' && pdfPath) {
+      try {
+        console.log('[SERVER STEP 4d] Creating Paper record in DB —', { draftId: draft.id, issueId });
+
+        const keywordsString = Array.isArray(draft.keywords)
+          ? (draft.keywords as string[]).join(', ')
+          : '';
+
+        const paper = await prisma.paper.create({
+          data: {
+            title: draft.title || '',
+            abstract: draft.abstract || '',
+            keywords: keywordsString || null,
+            filePath: pdfPath,
+            status: 'PUBLISHED',
+            submitterId: session.user.id,
+            issueId: issueId || null,
+            doi: doi || null,
+            publishedAt: new Date(),
+            sourceFilePath: storedSourceFilePath,
+            sourceFileName: sourceFileName || (docxFile?.name ?? null),
+            sourceFileSize: docxFile?.size ?? sourceFileSize,
+            researchPaperDraftId: draft.id,
+          },
+        });
+
+        // Authors create karo — email se user dhundho, nahi mila to banao
+        for (let i = 0; i < draft.authors.length; i++) {
+          const a = draft.authors[i];
+          let user;
+          if (a.email?.trim()) {
+            const email = a.email.trim().toLowerCase();
+            user = await prisma.user.findUnique({ where: { email } });
+            if (!user) {
+              user = await prisma.user.create({
+                data: {
+                  email,
+                  firstName: a.name.split(' ')[0] || a.name,
+                  lastName: a.name.split(' ').slice(1).join(' ') || 'Author',
+                  passwordHash: '',
+                  role: 'AUTHOR',
+                  isVerified: false,
+                },
+              });
+            }
+          } else {
+            const nameParts = a.name.trim().split(' ');
+            user = await prisma.user.create({
+              data: {
+                firstName: nameParts[0] || a.name,
+                lastName: nameParts.slice(1).join(' ') || 'Author',
+                passwordHash: '',
+                role: 'AUTHOR',
+                isVerified: false,
+              },
+            } as any);
+          }
+          await prisma.paperAuthor.create({
+            data: {
+              paperId: paper.id,
+              userId: user.id,
+              authorOrder: i + 1,
+              isCorresponding: a.isCorresponding,
+            },
+          });
+        }
+
+        console.log('[SERVER STEP 4d] Paper record created ✅ —', { paperId: paper.id });
+      } catch (paperError) {
+        console.error('[SERVER STEP 4d] Paper record creation failed (non-fatal):', paperError);
+      }
+    }
+
     return NextResponse.json({ draft, message: 'Research paper published successfully' });
   } catch (error) {
     console.error('Error submitting research paper:', error);

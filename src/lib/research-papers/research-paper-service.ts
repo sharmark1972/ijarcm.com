@@ -309,6 +309,15 @@ export async function deleteResearchPaperDraft(id: string) {
   const existing = await prisma.researchPaperDraft.findUnique({ where: { id } });
   if (!existing) throw new Error('Research paper draft not found.');
 
+  // Linked Paper record pehle delete karo (cascade se PaperAuthor bhi nahi hata, manually karna hoga)
+  const linkedPaper = await prisma.paper.findUnique({ where: { researchPaperDraftId: id } });
+  if (linkedPaper) {
+    console.log('[DELETE] Removing linked Paper record —', linkedPaper.id);
+    await prisma.paperAuthor.deleteMany({ where: { paperId: linkedPaper.id } });
+    await prisma.paper.delete({ where: { id: linkedPaper.id } });
+    console.log('[DELETE] Linked Paper deleted ✅');
+  }
+
   console.log('[DELETE] Deleting ResearchPaperDraft from DB —', { id, title: existing.title });
   await prisma.researchPaperDraft.delete({ where: { id } });
   console.log('[DELETE] DB record deleted ✅');
@@ -341,7 +350,7 @@ export async function publishResearchPaperDraft(id: string) {
   if (!draft) throw new Error('Research paper draft not found.');
   validatePublishReady(draft);
 
-  return prisma.researchPaperDraft.update({
+  const updated = await prisma.researchPaperDraft.update({
     where: { id },
     data: {
       status: ResearchPaperStatus.PUBLISHED,
@@ -349,6 +358,81 @@ export async function publishResearchPaperDraft(id: string) {
     },
     include: includeDraftRelations,
   });
+
+  // Paper record banao agar pehle se exist nahi karta
+  const existingPaper = await prisma.paper.findUnique({
+    where: { researchPaperDraftId: id },
+  });
+
+  if (!existingPaper && draft.pdfPath) {
+    try {
+      const keywordsString = Array.isArray(draft.keywords)
+        ? (draft.keywords as string[]).join(', ')
+        : '';
+
+      const paper = await prisma.paper.create({
+        data: {
+          title: draft.title || '',
+          abstract: draft.abstract || '',
+          keywords: keywordsString || null,
+          filePath: draft.pdfPath,
+          status: 'PUBLISHED',
+          submitterId: draft.createdBy,
+          issueId: draft.issueId || null,
+          doi: draft.doi || null,
+          publishedAt: new Date(),
+          sourceFilePath: draft.sourceFilePath,
+          sourceFileName: draft.sourceFileName,
+          sourceFileSize: draft.sourceFileSize,
+          researchPaperDraftId: draft.id,
+        },
+      });
+
+      for (let i = 0; i < draft.authors.length; i++) {
+        const a = draft.authors[i];
+        let user;
+        if (a.email?.trim()) {
+          const email = a.email.trim().toLowerCase();
+          user = await prisma.user.findUnique({ where: { email } });
+          if (!user) {
+            user = await prisma.user.create({
+              data: {
+                email,
+                firstName: a.name.split(' ')[0] || a.name,
+                lastName: a.name.split(' ').slice(1).join(' ') || 'Author',
+                passwordHash: '',
+                role: 'AUTHOR',
+                isVerified: false,
+              },
+            });
+          }
+        } else {
+          const nameParts = a.name.trim().split(' ');
+          user = await prisma.user.create({
+            data: {
+              firstName: nameParts[0] || a.name,
+              lastName: nameParts.slice(1).join(' ') || 'Author',
+              passwordHash: '',
+              role: 'AUTHOR',
+              isVerified: false,
+            },
+          } as any);
+        }
+        await prisma.paperAuthor.create({
+          data: {
+            paperId: paper.id,
+            userId: user.id,
+            authorOrder: i + 1,
+            isCorresponding: a.isCorresponding,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('[publishResearchPaperDraft] Paper creation failed (non-fatal):', err);
+    }
+  }
+
+  return updated;
 }
 
 function styleUrlsInHtml(html: string): string {

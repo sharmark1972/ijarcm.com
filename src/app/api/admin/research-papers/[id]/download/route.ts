@@ -30,6 +30,8 @@ export async function GET(
       .toLowerCase()
       .slice(0, 60);
 
+    console.log('[DOWNLOAD] draft.pdfPath —', (draft as any).pdfPath ?? 'NULL');
+
     // Agar PDF R2 mein save hai to seedha serve karo
     if ((draft as any).pdfPath) {
       console.log('[DOWNLOAD] Serving PDF from R2 —', (draft as any).pdfPath);
