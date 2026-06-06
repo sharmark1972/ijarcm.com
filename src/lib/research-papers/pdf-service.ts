@@ -81,16 +81,28 @@ export async function generatePreviewPdfFromData(data: PreviewPdfData): Promise<
 async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
   const cssPath = join(process.cwd(), 'src', 'components', 'admin', 'research-papers', 'pdf', 'research-paper-pdf.css');
   const css = await readFile(cssPath, 'utf8');
-  const logoBuffer = await readFile(join(process.cwd(), 'public', 'ijarcm_logo.png'));
-  const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
   const issue = data.issue;
   const journal = data.journal;
+  const isIjarcm = !journal || journal.abbreviation === 'IJARCM';
   const publishedDate = issue
     ? `${new Date(issue.publishDate).toLocaleString('en-US', { month: 'long' })}-${issue.year}`
     : '';
   const journalName = journal?.name || 'International Journal of Academic Research in Commerce & Management';
   const journalWebsite = journal?.website || 'https://www.ijarcm.com/';
   const journalIssn = journal?.issnPrint || journal?.issnOnline || '2455-0116';
+
+  let logoBase64 = '';
+  let watermarkStyle = '';
+  let logoHtml = '';
+
+  if (isIjarcm) {
+    const logoBuffer = await readFile(join(process.cwd(), 'public', 'ijarcm_logo.png'));
+    logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+    watermarkStyle = `background-image: url('${buildWatermarkSvg(logoBase64)}'); background-size: 210mm 297mm; background-repeat: repeat-y; background-position: left top;`;
+    logoHtml = `<img src="${logoBase64}" class="pdf-logo" alt="IJARCM" />`;
+  } else {
+    logoHtml = `<div class="pdf-logo-abbr">${escapeHtml(journal?.abbreviation || '')}</div>`;
+  }
 
   return `<!doctype html>
 <html>
@@ -100,10 +112,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
   <style>
     body {
       margin: 0;
-      background-image: url('${buildWatermarkSvg(logoBase64)}');
-      background-size: 210mm 297mm;
-      background-repeat: repeat-y;
-      background-position: left top;
+      ${watermarkStyle}
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -126,7 +135,7 @@ async function buildPdfHtmlFromData(data: PreviewPdfData): Promise<string> {
             </div>
           </div>
           <div class="pdf-masthead-logos">
-            <img src="${logoBase64}" class="pdf-logo" alt="${escapeHtml(journal?.abbreviation || 'IJARCM')}" />
+            ${logoHtml}
           </div>
         </div>
       </header>
@@ -213,12 +222,15 @@ export async function generateResearchPaperPdf(draftId: string, mode: 'preview' 
 async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPaperDraft.findUnique>> & Record<string, any>) {
   const cssPath = join(process.cwd(), 'src', 'components', 'admin', 'research-papers', 'pdf', 'research-paper-pdf.css');
   const css = await readFile(cssPath, 'utf8');
-  const logoBuffer = await readFile(join(process.cwd(), 'public', 'ijarcm_logo.png'));
-  const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
   const issue = draft.issue;
   const publishedDate = issue
     ? `${issue.publishDate.toLocaleString('en-US', { month: 'long' })}-${issue.year}`
     : '';
+
+  // Draft-based: journal info nahi hota, IJARCM default
+  const logoBuffer = await readFile(join(process.cwd(), 'public', 'ijarcm_logo.png'));
+  const logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
+  const watermarkStyle = `background-image: url('${buildWatermarkSvg(logoBase64)}'); background-size: 210mm 297mm; background-repeat: repeat-y; background-position: left top;`;
 
   return `<!doctype html>
 <html>
@@ -228,10 +240,7 @@ async function buildPdfHtml(draft: Awaited<ReturnType<typeof prisma.researchPape
   <style>
     body {
       margin: 0;
-      background-image: url('${buildWatermarkSvg(logoBase64)}');
-      background-size: 210mm 297mm;
-      background-repeat: repeat-y;
-      background-position: left top;
+      ${watermarkStyle}
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
